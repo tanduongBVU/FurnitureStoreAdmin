@@ -1,0 +1,18 @@
+.admin-header {
+  height: 64px;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.admin-header__title { font-size: 18px; font-weight: 700; color: var(--text); margin: 0; }
+.admin-header__date  { font-size: 12px; color: var(--text-muted); margin: 0; }
+.admin-header__right { display: flex; align-items: center; gap: 8px; }
+.header-btn { background: none; border: 1px solid var(--border); border-radius: 8px; width: 36px; height: 36px; cursor: pointer; font-size: 16px; transition: background .15s; }
+.header-btn:hover { background: var(--bg); }
+.header-avatar { width: 36px; height: 36px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 14px; cursor: pointer; }
