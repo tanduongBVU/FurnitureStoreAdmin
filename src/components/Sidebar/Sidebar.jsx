@@ -6,14 +6,24 @@ const navItems = [
   { path: "/products",  icon: "🪑", label: "Sản phẩm" },
   { path: "/orders",    icon: "📦", label: "Đơn hàng" },
   { path: "/contacts",  icon: "✉️",  label: "Liên hệ" },
-  { path: "/users",     icon: "👥", label: "Người dùng" },
+  { path: "/users",     icon: "👥", label: "Người dùng", adminOnly: true },
 ];
 
 const Sidebar = () => {
   const navigate = useNavigate();
 
+  const userStr = localStorage.getItem("adminUser");
+  const currentUser = userStr ? JSON.parse(userStr) : null;
+  const role = currentUser?.role || "";
+  const name = currentUser?.name || "Admin";
+
+  const visibleItems = navItems.filter(item => !item.adminOnly || role === "Admin");
+
+  const getInitial = (n) => n.trim().charAt(0).toUpperCase() || "A";
+
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
     navigate("/login");
   };
 
@@ -31,7 +41,7 @@ const Sidebar = () => {
       {/* Nav */}
       <nav className="sidebar__nav">
         <p className="sidebar__group-label">Quản lý</p>
-        {navItems.map(({ path, icon, label }) => (
+        {visibleItems.map(({ path, icon, label }) => (
           <NavLink
             key={path}
             to={path}
@@ -48,10 +58,10 @@ const Sidebar = () => {
       {/* Bottom */}
       <div className="sidebar__bottom">
         <div className="sidebar__admin-info">
-          <div className="sidebar__avatar">A</div>
+          <div className="sidebar__avatar">{getInitial(name)}</div>
           <div>
-            <p className="sidebar__admin-name">Admin</p>
-            <p className="sidebar__admin-role">Quản trị viên</p>
+            <p className="sidebar__admin-name">{name}</p>
+            <p className="sidebar__admin-role">{role || "Quản trị viên"}</p>
           </div>
         </div>
         <button className="sidebar__logout" onClick={handleLogout}>

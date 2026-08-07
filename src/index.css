@@ -19,12 +19,18 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Đảm bảo CSS variables hoạt động với Portal */
 body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  font-size: 14px;
-  line-height: 1.5;
+  --white: #ffffff;
+  --bg: #f4f6fb;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --accent: #4f72e3;
+  --accent-h: #3a5bd9;
+  --danger: #ef4444;
+  --navy: #1e2a4a;
+  --sidebar-w: 240px;
 }
 
 #root { display: block; min-height: 100vh; }
@@ -32,3 +38,13 @@ body {
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+#root {
+  display: block;
+  min-height: 100vh;
+}
+
+/* Đảm bảo modal portal hoạt động */
+body > div[class="modal-overlay"] {
+  position: fixed !important;
+}

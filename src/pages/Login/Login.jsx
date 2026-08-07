@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../../services/Api";
 import "./Login.css";
 
 const Login = () => {
@@ -12,16 +13,19 @@ const Login = () => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    // Tạm thời giả lập login — thay bằng API sau
-    setTimeout(() => {
-      if (form.email === "admin@luxwood.vn" && form.password === "admin123") {
-        localStorage.setItem("adminToken", "fake-token-123");
-        navigate("/dashboard");
-      } else {
-        setError("Email hoặc mật khẩu không đúng!");
-      }
+    try {
+      const res = await api.post("/Auth/login", form);
+      const { token, id, name, email, role } = res.data;
+
+      localStorage.setItem("adminToken", token);
+      localStorage.setItem("adminUser", JSON.stringify({ id, name, email, role }));
+
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.response?.data?.message || "Email hoặc mật khẩu không đúng!");
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
@@ -60,7 +64,6 @@ const Login = () => {
             {loading ? "Đang đăng nhập..." : "Đăng nhập"}
           </button>
         </form>
-        <p className="login-hint">Demo: admin@luxwood.vn / admin123</p>
       </div>
     </div>
   );

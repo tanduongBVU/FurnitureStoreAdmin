@@ -61,8 +61,29 @@
 .page-btn:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ── Modal ── */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 24px; }
-.modal { background: var(--white); border-radius: 16px; width: 100%; max-width: 560px; box-shadow: 0 8px 40px rgba(0,0,0,.15); }
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 24px;
+}
+
+.modal {
+  background: #ffffff;  /* dùng màu trực tiếp thay vì var(--white) */
+  border-radius: 16px;
+  width: 100%;
+  max-width: 560px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
+  max-height: 90vh;
+  overflow-y: auto;
+}
 .modal--sm { max-width: 420px; padding: 28px; }
 .modal__header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--border); }
 .modal__header h3 { font-size: 16px; font-weight: 700; color: var(--text); margin: 0; }
@@ -82,3 +103,25 @@
 .btn-delete { padding: 10px 20px; background: var(--danger); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
 .btn-delete:hover { opacity: .88; }
 .confirm-text { font-size: 14px; color: var(--text-muted); line-height: 1.6; margin: 0 0 20px; }
+
+/* ── API States ── */
+.error-box { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 10px; padding: 14px 18px; color: var(--danger); font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.error-box button { padding: 6px 14px; background: var(--danger); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: inherit; }
+.loading-box { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 80px; color: var(--text-muted); }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.product-cell__img img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+.form-group--checkbox { flex-direction: row; align-items: center; gap: 10px; }
+.form-group--checkbox label { font-size: 14px; font-weight: 400; cursor: pointer; }
+.form-group--checkbox input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+/* ── Thêm vào cuối file Products.css (Admin) ── */
+.row--hidden td { opacity: .55; }
+.badge--muted { background: rgba(100,116,139,.12); color: #64748b; }
+
+.btn-restore {
+  padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  cursor: pointer; border: 1.5px solid rgba(34,197,94,.2);
+  background: rgba(34,197,94,.08); color: #16a34a;
+  transition: all .15s; font-family: inherit;
+}
+.btn-restore:hover { background: #16a34a; color: #fff; }
