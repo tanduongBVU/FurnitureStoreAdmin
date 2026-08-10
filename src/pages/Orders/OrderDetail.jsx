@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import api from "../../services/api";
+import api from "../../services/Api";
 import "./OrderDetail.css";
 
 const STATUS_LIST = ["Chờ xác nhận", "Đang xử lý", "Đang giao", "Hoàn thành", "Huỷ"];

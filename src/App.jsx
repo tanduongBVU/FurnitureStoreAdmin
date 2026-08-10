@@ -17,6 +17,8 @@ import Users from "./pages/Users/Users";
 import UserCreate from "./pages/Users/UserCreate";
 import UserEdit from "./pages/Users/UserEdit";
 
+import SiteSettings from "./pages/SiteSettings/SiteSettings";
+
 import Login from "./pages/Login/Login";
 
 const App = () => {
@@ -37,8 +39,6 @@ const App = () => {
         <Route path="products" element={<Products />} />
         <Route path="products/create" element={<ProductCreate />} />
         <Route path="products/edit/:id" element={<ProductEdit />} />
-        {/* Đã bỏ route products/delete/:id — thao tác Ẩn/Hiện giờ làm trực tiếp
-            ngay trên danh sách (giống Users), không cần trang xác nhận riêng */}
 
         <Route path="orders" element={<Orders />} />
         <Route path="orders/:id" element={<OrderDetail />} />
@@ -67,6 +67,15 @@ const App = () => {
           element={
             <ProtectedRoute adminOnly>
               <UserEdit />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="settings"
+          element={
+            <ProtectedRoute adminOnly>
+              <SiteSettings />
             </ProtectedRoute>
           }
         />
