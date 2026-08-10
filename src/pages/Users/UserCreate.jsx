@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../services/api";
+import api from "../../services/Api";
 import "./UserForm.css";
 
 const EMPTY_FORM = { name: "", email: "", phone: "", role: "Khách hàng", status: "Hoạt động", passwordHash: "" };

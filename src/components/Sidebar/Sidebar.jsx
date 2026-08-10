@@ -7,6 +7,7 @@ const navItems = [
   { path: "/orders",    icon: "📦", label: "Đơn hàng" },
   { path: "/contacts",  icon: "✉️",  label: "Liên hệ" },
   { path: "/users",     icon: "👥", label: "Người dùng", adminOnly: true },
+  { path: "/settings",  icon: "🎨", label: "Giao diện", adminOnly: true },
 ];
 
 const Sidebar = () => {

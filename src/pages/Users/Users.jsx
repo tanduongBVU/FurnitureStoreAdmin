@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../services/api";
+import api from "../../services/Api";
 import "./Users.css";
 
 const ROLES = ["Tất cả", "Khách hàng", "Nhân viên", "Admin"];
