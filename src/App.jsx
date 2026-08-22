@@ -7,11 +7,23 @@ import Products from "./pages/Products/Products";
 import ProductCreate from "./pages/Products/ProductCreate";
 import ProductEdit from "./pages/Products/ProductEdit";
 
+import Services from "./pages/Services/Services";
+import Projects from "./pages/Projects/Projects";
+
+import BlogPosts from "./pages/BlogPosts/BlogPosts";
+import BlogPostCreate from "./pages/BlogPosts/BlogPostCreate";
+import BlogPostEdit from "./pages/BlogPosts/BlogPostEdit";
+
+import ReviewsAdmin from "./pages/Reviews/ReviewsAdmin";
+
 import Orders from "./pages/Orders/Orders";
 import OrderDetail from "./pages/Orders/OrderDetail";
 
 import Contacts from "./pages/Contacts/Contacts";
 import ContactDetail from "./pages/Contacts/ContactDetail";
+
+import Newsletter from "./pages/Newsletter/Newsletter";
+import Coupons from "./pages/Coupons/Coupons";
 
 import Users from "./pages/Users/Users";
 import UserCreate from "./pages/Users/UserCreate";
@@ -40,11 +52,23 @@ const App = () => {
         <Route path="products/create" element={<ProductCreate />} />
         <Route path="products/edit/:id" element={<ProductEdit />} />
 
+        <Route path="services" element={<Services />} />
+        <Route path="projects" element={<Projects />} />
+
+        <Route path="blogposts" element={<BlogPosts />} />
+        <Route path="blogposts/create" element={<BlogPostCreate />} />
+        <Route path="blogposts/edit/:id" element={<BlogPostEdit />} />
+
+        <Route path="reviews" element={<ReviewsAdmin />} />
+
         <Route path="orders" element={<Orders />} />
         <Route path="orders/:id" element={<OrderDetail />} />
 
         <Route path="contacts" element={<Contacts />} />
         <Route path="contacts/:id" element={<ContactDetail />} />
+
+        <Route path="newsletter" element={<Newsletter />} />
+        <Route path="coupons" element={<Coupons />} />
 
         <Route
           path="users"

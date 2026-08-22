@@ -14,9 +14,11 @@ const ProductEdit = () => {
   const [error, setError] = useState("");
   const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
 
+  const formatPrice = (n) => Number(n).toLocaleString("vi-VN") + " ₫";
+
   useEffect(() => {
     api.get(`/Products/${id}`)
-      .then(res => setForm(res.data))
+      .then(res => setForm({ discountPercent: 0, ...res.data }))
       .catch(() => setError("Không tìm thấy sản phẩm!"))
       .finally(() => setLoading(false));
   }, [id]);
@@ -30,6 +32,7 @@ const ProductEdit = () => {
         ...form,
         price: Number(form.price),
         stock: Number(form.stock),
+        discountPercent: Number(form.discountPercent) || 0,
       });
       navigate("/products");
     } catch {
@@ -116,6 +119,41 @@ const ProductEdit = () => {
                   placeholder="Mô tả chi tiết về sản phẩm..."
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3>Khuyến mãi</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label htmlFor="discountPercent">Giảm giá (%)</label>
+                <input
+                  id="discountPercent"
+                  name="discountPercent"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={form.discountPercent ?? 0}
+                  onChange={e => {
+                    const v = Number(e.target.value);
+                    if (v >= 0 && v <= 100) set("discountPercent", e.target.value);
+                  }}
+                  placeholder="0 = không giảm giá"
+                />
+              </div>
+              {Number(form.discountPercent) > 0 && Number(form.price) > 0 && (
+                <div className="form-group" style={{ justifyContent: "flex-end" }}>
+                  <label>Giá sau giảm</label>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                    <strong style={{ color: "#b91c1c", fontSize: 16 }}>
+                      {formatPrice(Number(form.price) * (1 - Number(form.discountPercent) / 100))}
+                    </strong>
+                    <span style={{ textDecoration: "line-through", color: "#999", fontSize: 13 }}>
+                      {formatPrice(form.price)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

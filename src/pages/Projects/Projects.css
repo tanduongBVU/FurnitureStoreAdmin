@@ -1,0 +1,173 @@
+.projects-admin-page {
+  padding: 28px 32px;
+}
+
+.projects-admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+.projects-admin-header h1 { font-size: 22px; color: var(--text); margin: 0 0 4px; }
+.projects-admin-header p { font-size: 13px; color: var(--text-muted); margin: 0; }
+.projects-admin-create-btn {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.projects-admin-create-btn:hover { background: var(--accent-h); }
+
+.projects-admin-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.projects-admin-loading,
+.projects-admin-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+.projects-admin-empty p { margin-top: 12px; font-size: 14px; }
+
+.projects-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.projects-admin-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.projects-admin-card--hidden { opacity: 0.55; }
+
+.projects-admin-card__img {
+  position: relative;
+  height: 150px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  overflow: hidden;
+}
+.projects-admin-card__img img { width: 100%; height: 100%; object-fit: cover; }
+.projects-admin-card__tag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: var(--navy, #1e2a4a);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.projects-admin-card__body { padding: 14px 16px; }
+.projects-admin-card__body h3 { font-size: 14px; color: var(--text); margin: 0 0 6px; }
+.projects-admin-card__meta {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0 0 12px;
+}
+.projects-admin-card__actions { display: flex; gap: 8px; }
+.projects-admin-card__actions button {
+  flex: 1;
+  padding: 7px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--white);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.projects-admin-card__actions button:hover { background: var(--bg); }
+
+/* ── Modal ── */
+.projects-admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.projects-admin-modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.projects-admin-modal h2 { font-size: 18px; color: var(--text); margin: 0 0 20px; }
+.projects-admin-modal-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.projects-admin-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.projects-admin-field { margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
+.projects-admin-field label { font-size: 12px; font-weight: 600; color: var(--text); }
+.projects-admin-field input,
+.projects-admin-field textarea {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+}
+.projects-admin-field input:focus,
+.projects-admin-field textarea:focus { border-color: var(--accent); }
+.projects-admin-field-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.projects-admin-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+.projects-admin-cancel {
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.projects-admin-save {
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.projects-admin-save:disabled { opacity: 0.6; cursor: not-allowed; }
