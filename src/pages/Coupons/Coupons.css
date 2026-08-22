@@ -1,0 +1,208 @@
+.coupons-admin-page {
+  padding: 28px 32px;
+}
+
+.coupons-admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+.coupons-admin-header h1 {
+  font-size: 22px;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+.coupons-admin-header p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+.coupons-admin-create-btn {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.coupons-admin-create-btn:hover {
+  background: var(--accent-h);
+}
+
+.coupons-admin-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.coupons-admin-loading,
+.coupons-admin-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+.coupons-admin-empty p {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.coupons-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.coupons-admin-table th {
+  text-align: left;
+  padding: 12px 16px;
+  background: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.coupons-admin-table td {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.coupons-admin-table tr:last-child td {
+  border-bottom: none;
+}
+
+.coupon-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.coupon-status--active { background: #dcfce7; color: #16a34a; }
+.coupon-status--off { background: #f1f5f9; color: #64748b; }
+.coupon-status--expired { background: #fee2e2; color: #dc2626; }
+
+.coupons-admin-actions {
+  display: flex;
+  gap: 4px;
+}
+.coupons-admin-actions button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+.coupons-admin-actions button:hover {
+  background: var(--bg);
+}
+
+/* ── Modal tạo/sửa ── */
+.coupons-admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.coupons-admin-modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px;
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.coupons-admin-modal h2 {
+  font-size: 18px;
+  color: var(--text);
+  margin: 0 0 20px;
+}
+
+.coupons-admin-modal-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.coupons-admin-field {
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.coupons-admin-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.coupons-admin-field input {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+}
+.coupons-admin-field input:focus {
+  border-color: var(--accent);
+}
+
+.coupons-admin-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  margin: 8px 0 20px;
+  cursor: pointer;
+}
+
+.coupons-admin-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.coupons-admin-cancel {
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.coupons-admin-save {
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.coupons-admin-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

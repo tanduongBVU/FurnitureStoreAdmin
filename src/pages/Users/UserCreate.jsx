@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import api from "../../services/Api";
 import "./UserForm.css";
 
+// passwordHash: tên field khớp đúng property "PasswordHash" của model User bên backend
+// để model binding hoạt động — nhưng giá trị nhập vào đây là mật khẩu THÔ, backend sẽ
+// tự hash bằng BCrypt trước khi lưu (không lưu dạng thô).
 const EMPTY_FORM = { name: "", email: "", phone: "", role: "Khách hàng", status: "Hoạt động", passwordHash: "" };
 
 const UserCreate = () => {
@@ -14,6 +17,10 @@ const UserCreate = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.passwordHash.length < 6) {
+      setError("Mật khẩu phải có ít nhất 6 ký tự!");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -86,7 +93,7 @@ const UserCreate = () => {
                 </select>
               </div>
               <div className="form-group">
-                <label htmlFor="password">Mật khẩu *</label>
+                <label htmlFor="password">Mật khẩu * (tối thiểu 6 ký tự)</label>
                 <input
                   id="password"
                   type="password"

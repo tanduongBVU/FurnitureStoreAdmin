@@ -10,10 +10,11 @@
 .stat-card__change.down { color: var(--danger); }
 
 .dashboard-card { background: var(--white); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
-.dashboard-card__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.dashboard-card__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
 .dashboard-card__header h2 { font-size: 15px; font-weight: 700; color: var(--text); margin: 0; }
 .view-all { font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 500; }
 .view-all:hover { text-decoration: underline; }
+.chart-note { font-size: 12px; color: var(--text-muted); }
 
 .table-wrap { overflow-x: auto; }
 .admin-table { width: 100%; border-collapse: collapse; }
@@ -29,8 +30,191 @@
 .badge--danger  { background: rgba(239,68,68,.12);  color: var(--danger); }
 
 .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.quick-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text); }
+.quick-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text); gap: 12px; }
 .quick-item:last-child { border-bottom: none; }
+.quick-item span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-@media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 640px)  { .stats-grid { grid-template-columns: 1fr; } .quick-grid { grid-template-columns: 1fr; } }
+/* ── Biểu đồ doanh thu (thanh cột CSS thuần, không cần thư viện) ── */
+.revenue-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 180px;
+  padding-top: 8px;
+}
+.revenue-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  gap: 6px;
+}
+.revenue-bar-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.revenue-bar {
+  width: 70%;
+  min-width: 6px;
+  background: linear-gradient(180deg, var(--accent), var(--accent) 100%);
+  border-radius: 4px 4px 0 0;
+  transition: height .3s ease, opacity .15s ease;
+  cursor: default;
+}
+.revenue-bar:hover { opacity: .8; }
+.revenue-bar-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── Toggle chọn khoảng thời gian biểu đồ (7 / 14 / 30 ngày) ── */
+.chart-range-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  padding: 3px;
+  border-radius: 8px;
+}
+.chart-range-btn {
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.chart-range-btn:hover {
+  color: var(--text);
+}
+.chart-range-btn--active {
+  background: var(--white);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
+/* ── Doanh thu theo danh mục ── */
+.category-revenue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.category-revenue-row__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.category-revenue-row__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-weight: 500;
+}
+.category-revenue-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.category-revenue-bar-track {
+  width: 100%;
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.category-revenue-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* ── Bảng xếp hạng bán chạy / bán chậm ── */
+.ranking-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.ranking-col__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+}
+.ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.ranking-item:last-child { border-bottom: none; }
+.ranking-item__rank {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ranking-item__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.ranking-item strong {
+  color: var(--text);
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+/* ── Trạng thái loading / lỗi / rỗng ── */
+.dashboard-loading, .dashboard-error {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.dashboard-error { color: var(--danger); }
+.dashboard-loading .spinner {
+  width: 30px; height: 30px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  margin: 0 auto 14px;
+  animation: dashboard-spin .8s linear infinite;
+}
+@keyframes dashboard-spin { to { transform: rotate(360deg); } }
+
+.empty-note { font-size: 13px; color: var(--text-muted); padding: 8px 0; margin: 0; }
+
+@media (max-width: 1024px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .revenue-chart { height: 140px; }
+  .ranking-columns { grid-template-columns: 1fr; gap: 24px; }
+}
+@media (max-width: 640px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .quick-grid { grid-template-columns: 1fr; }
+  .revenue-bar-label { display: none; }
+}

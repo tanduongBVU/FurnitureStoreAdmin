@@ -74,3 +74,44 @@
 @media (max-width: 900px) {
   .settings-grid { grid-template-columns: 1fr; }
 }
+
+/* ══════════════════════════════════════════════════════
+   BỔ SUNG cho tab ngang + hint field — dán thêm vào CUỐI
+   file SiteSettings.css hiện có (không thay thế).
+   ══════════════════════════════════════════════════════ */
+
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  margin: 20px 0 24px;
+  overflow-x: auto;
+}
+
+.settings-tab {
+  padding: 10px 18px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.settings-tab:hover {
+  color: var(--text, #1e293b);
+}
+.settings-tab--active {
+  color: var(--accent, #4f72e3);
+  border-bottom-color: var(--accent, #4f72e3);
+}
+
+.settings-field-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+  margin-top: 4px;
+  line-height: 1.5;
+}

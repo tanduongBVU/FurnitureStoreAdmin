@@ -12,6 +12,12 @@ const UserEdit = () => {
   const [error, setError] = useState("");
   const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
 
+  // Đặt lại mật khẩu — tách riêng khỏi form thông tin chính vì đây là hành động nhạy cảm
+  const [newPassword, setNewPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
+
   useEffect(() => {
     api.get(`/Users/${id}`)
       .then(res => setForm(res.data))
@@ -30,6 +36,29 @@ const UserEdit = () => {
       setError("Lỗi khi cập nhật người dùng! Kiểm tra lại backend.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setResetError("");
+    setResetSuccess(false);
+    if (newPassword.length < 6) {
+      setResetError("Mật khẩu mới phải có ít nhất 6 ký tự!");
+      return;
+    }
+    setResetting(true);
+    try {
+      await api.patch(`/Users/${id}/reset-password`, JSON.stringify(newPassword), {
+        headers: { "Content-Type": "application/json" },
+      });
+      setResetSuccess(true);
+      setNewPassword("");
+      setTimeout(() => setResetSuccess(false), 3000);
+    } catch (err) {
+      setResetError(err.response?.data?.message || "Lỗi khi đặt lại mật khẩu! Kiểm tra lại backend.");
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -104,6 +133,43 @@ const UserEdit = () => {
             <button type="button" className="btn-cancel" onClick={() => navigate("/users")}>Huỷ</button>
             <button type="submit" className="btn-save" disabled={saving}>
               {saving ? "Đang lưu..." : "Lưu thay đổi"}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Đặt lại mật khẩu — form riêng biệt, submit độc lập với form thông tin ở trên */}
+      <div className="form-card">
+        <form onSubmit={handleResetPassword}>
+          <div className="form-section">
+            <h3>Đặt lại mật khẩu</h3>
+            {resetError && <div className="form-error" style={{ marginBottom: 16 }}>⚠️ {resetError}</div>}
+            {resetSuccess && (
+              <div
+                style={{
+                  background: "rgba(34,197,94,.1)", border: "1px solid rgba(34,197,94,.3)",
+                  borderRadius: 10, padding: "12px 16px", color: "#16a34a", fontSize: 14, marginBottom: 16,
+                }}
+              >
+                ✓ Đã đặt lại mật khẩu thành công!
+              </div>
+            )}
+            <div className="form-grid">
+              <div className="form-group">
+                <label htmlFor="newPassword">Mật khẩu mới * (tối thiểu 6 ký tự)</label>
+                <input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="btn-save" disabled={resetting || !newPassword}>
+              {resetting ? "Đang đặt lại..." : "Đặt lại mật khẩu"}
             </button>
           </div>
         </form>

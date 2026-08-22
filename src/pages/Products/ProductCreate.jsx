@@ -4,7 +4,7 @@ import api from "../../services/Api";
 import "./ProductForm.css";
 
 const CATEGORIES = ["Phòng khách", "Phòng ngủ", "Phòng ăn", "Phòng làm việc", "Ban công"];
-const EMPTY_FORM = { name: "", category: "Phòng khách", price: "", stock: "", description: "", image: "", isBestSeller: false };
+const EMPTY_FORM = { name: "", category: "Phòng khách", price: "", stock: "", description: "", image: "", isBestSeller: false, discountPercent: 0 };
 
 const ProductCreate = () => {
   const [form, setForm] = useState(EMPTY_FORM);
@@ -12,6 +12,8 @@ const ProductCreate = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
+
+  const formatPrice = (n) => Number(n).toLocaleString("vi-VN") + " ₫";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,6 +24,7 @@ const ProductCreate = () => {
         ...form,
         price: Number(form.price),
         stock: Number(form.stock),
+        discountPercent: Number(form.discountPercent) || 0,
       });
       navigate("/products");
     } catch {
@@ -98,6 +101,41 @@ const ProductCreate = () => {
                   placeholder="Mô tả chi tiết về sản phẩm..."
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3>Khuyến mãi</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label htmlFor="discountPercent">Giảm giá (%)</label>
+                <input
+                  id="discountPercent"
+                  name="discountPercent"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={form.discountPercent}
+                  onChange={e => {
+                    const v = Number(e.target.value);
+                    if (v >= 0 && v <= 100) set("discountPercent", e.target.value);
+                  }}
+                  placeholder="0 = không giảm giá"
+                />
+              </div>
+              {Number(form.discountPercent) > 0 && Number(form.price) > 0 && (
+                <div className="form-group" style={{ justifyContent: "flex-end" }}>
+                  <label>Giá sau giảm</label>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                    <strong style={{ color: "#b91c1c", fontSize: 16 }}>
+                      {formatPrice(Number(form.price) * (1 - Number(form.discountPercent) / 100))}
+                    </strong>
+                    <span style={{ textDecoration: "line-through", color: "#999", fontSize: 13 }}>
+                      {formatPrice(form.price)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

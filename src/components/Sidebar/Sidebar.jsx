@@ -2,12 +2,18 @@ import { NavLink, useNavigate } from "react-router-dom";
 import "./Sidebar.css";
 
 const navItems = [
-  { path: "/dashboard", icon: "📊", label: "Dashboard" },
-  { path: "/products",  icon: "🪑", label: "Sản phẩm" },
-  { path: "/orders",    icon: "📦", label: "Đơn hàng" },
-  { path: "/contacts",  icon: "✉️",  label: "Liên hệ" },
-  { path: "/users",     icon: "👥", label: "Người dùng", adminOnly: true },
-  { path: "/settings",  icon: "🎨", label: "Giao diện", adminOnly: true },
+  { path: "/dashboard",  icon: "📊", label: "Dashboard" },
+  { path: "/products",   icon: "🪑", label: "Sản phẩm" },
+  { path: "/services",   icon: "🛠️", label: "Dịch vụ" },
+  { path: "/projects",   icon: "🏛️", label: "Dự án" },
+  { path: "/blogposts",  icon: "📝", label: "Cẩm nang" },
+  { path: "/reviews",    icon: "⭐", label: "Đánh giá" },
+  { path: "/orders",     icon: "📦", label: "Đơn hàng" },
+  { path: "/contacts",   icon: "✉️",  label: "Liên hệ" },
+  { path: "/newsletter", icon: "📧", label: "Nhận tin" },
+  { path: "/coupons",    icon: "🎟️", label: "Mã giảm giá" },
+  { path: "/users",      icon: "👥", label: "Người dùng", adminOnly: true },
+  { path: "/settings",   icon: "🎨", label: "Giao diện", adminOnly: true },
 ];
 
 const Sidebar = () => {

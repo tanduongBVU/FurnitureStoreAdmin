@@ -118,6 +118,7 @@ const Products = () => {
                     <th>Sản phẩm</th>
                     <th>Danh mục</th>
                     <th>Giá</th>
+                    <th>Giảm giá</th>
                     <th>Tồn kho</th>
                     <th>Bán chạy</th>
                     <th>Kho hàng</th>
@@ -127,7 +128,7 @@ const Products = () => {
                 </thead>
                 <tbody>
                   {paginated.length === 0 ? (
-                    <tr><td colSpan={8} className="empty-row">Không tìm thấy sản phẩm nào</td></tr>
+                    <tr><td colSpan={9} className="empty-row">Không tìm thấy sản phẩm nào</td></tr>
                   ) : paginated.map(p => (
                     <tr key={p.id} className={!p.isActive ? "row--hidden" : ""}>
                       <td>
@@ -142,7 +143,25 @@ const Products = () => {
                         </div>
                       </td>
                       <td><span className="category-tag">{p.category || "—"}</span></td>
-                      <td><strong>{formatPrice(p.price)}</strong></td>
+                      <td>
+                        {p.discountPercent > 0 ? (
+                          <div>
+                            <span style={{ textDecoration: "line-through", color: "#aaa", fontSize: 12, display: "block" }}>
+                              {formatPrice(p.price)}
+                            </span>
+                            <strong style={{ color: "#b91c1c" }}>
+                              {formatPrice(p.price * (1 - p.discountPercent / 100))}
+                            </strong>
+                          </div>
+                        ) : (
+                          <strong>{formatPrice(p.price)}</strong>
+                        )}
+                      </td>
+                      <td>
+                        {p.discountPercent > 0
+                          ? <span className="badge badge--danger">-{p.discountPercent}%</span>
+                          : <span style={{ color: "#ccc" }}>—</span>}
+                      </td>
                       <td>
                         <span className={p.stock === 0 ? "stock-zero" : p.stock <= 2 ? "stock-low" : "stock-ok"}>
                           {p.stock}
