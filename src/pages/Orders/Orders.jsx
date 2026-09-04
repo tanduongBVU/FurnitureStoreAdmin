@@ -14,14 +14,35 @@ const STATUS_CLASS = {
 };
 const PAGE_SIZE = 6;
 
+// Bỏ dấu tiếng Việt + khoảng trắng — dùng để tạo TÊN FILE an toàn, tránh vài hệ điều hành
+// cũ hoặc phần mềm xử lý file bị lỗi với ký tự có dấu trong tên file.
+const slugify = (str) =>
+  str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .trim()
+    .replace(/\s+/g, "-")
+    .toLowerCase();
+
+const buildFilename = ({ statusFilter, dateFrom, dateTo, ext }) => {
+  const parts = ["don-hang"];
+  if (statusFilter !== "Tất cả") parts.push(slugify(statusFilter));
+  if (dateFrom) parts.push(`tu-${dateFrom}`);
+  if (dateTo) parts.push(`den-${dateTo}`);
+  parts.push(new Date().toISOString().slice(0, 10));
+  return `${parts.join("_")}.${ext}`;
+};
+
 // ── Xuất Excel (thư viện xlsx — thuần JS, không phụ thuộc React nên không lo xung đột version) ──
-const exportExcel = (data) => {
+const exportExcel = (data, filename) => {
   const rows = data.map(o => ({
     "Mã đơn": `#${o.id}`,
     "Khách hàng": o.customerName,
     "Điện thoại": o.phone,
     "Địa chỉ": o.address || "",
     "Sản phẩm": o.orderItems?.map(i => `${i.productName} x${i.quantity}`).join(", ") || "",
+    "Mã giảm giá": o.couponCode || "—",
     "Tổng tiền (₫)": o.total,
     "Trạng thái": o.status,
     "Ngày đặt": new Date(o.createdAt).toLocaleDateString("vi-VN"),
@@ -29,21 +50,21 @@ const exportExcel = (data) => {
   const ws = XLSX.utils.json_to_sheet(rows);
   ws["!cols"] = [
     { wch: 8 }, { wch: 22 }, { wch: 14 }, { wch: 32 },
-    { wch: 45 }, { wch: 14 }, { wch: 14 }, { wch: 12 },
+    { wch: 45 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 },
   ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Đơn hàng");
-  const filename = `don-hang_${new Date().toISOString().slice(0, 10)}.xlsx`;
   XLSX.writeFile(wb, filename);
 };
 
 // ── Xuất PDF (mở tab mới + gọi hộp thoại In của trình duyệt, chọn "Lưu thành PDF") ──
-const exportPDF = (data) => {
+const exportPDF = (data, filename) => {
   const rows = data.map(o => `
     <tr>
       <td>#${o.id}</td>
       <td>${o.customerName || ""}<br/><span class="muted">${o.phone || ""}</span></td>
       <td>${o.orderItems?.map(i => `${i.productName} x${i.quantity}`).join(", ") || "—"}</td>
+      <td>${o.couponCode || "—"}</td>
       <td class="num">${Number(o.total).toLocaleString("vi-VN")} ₫</td>
       <td>${new Date(o.createdAt).toLocaleDateString("vi-VN")}</td>
       <td>${o.status}</td>
@@ -57,7 +78,7 @@ const exportPDF = (data) => {
     <html lang="vi">
     <head>
       <meta charset="UTF-8" />
-      <title>Danh sách đơn hàng - LuxWood</title>
+      <title>${filename}</title>
       <style>
         body { font-family: Arial, Helvetica, sans-serif; padding: 24px; color: #1e293b; }
         h1 { font-size: 18px; margin: 0 0 4px; }
@@ -77,14 +98,14 @@ const exportPDF = (data) => {
       <table>
         <thead>
           <tr>
-            <th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th>
+            <th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th>Mã giảm giá</th>
             <th>Tổng tiền</th><th>Ngày đặt</th><th>Trạng thái</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
         <tfoot>
           <tr>
-            <td colspan="3">Tổng cộng</td>
+            <td colspan="4">Tổng cộng</td>
             <td class="num">${totalSum.toLocaleString("vi-VN")} ₫</td>
             <td colspan="2"></td>
           </tr>
@@ -115,7 +136,12 @@ const Orders = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("Tất cả");
   const [page, setPage] = useState(1);
-  const [exportAll, setExportAll] = useState(false); // false = chỉ xuất theo bộ lọc đang hiển thị
+  const [exportAll, setExportAll] = useState(false); // true = xuất TOÀN BỘ, bỏ qua mọi bộ lọc kể cả ngày
+
+  // Khoảng ngày — giờ là 1 điều kiện lọc CHUNG với Trạng thái + Tìm kiếm, áp dụng cho cả
+  // bảng hiển thị bên dưới lẫn dữ liệu xuất file, không còn tách riêng như trước.
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const fetchOrders = async () => {
     try {
@@ -136,24 +162,32 @@ const Orders = () => {
     const matchSearch = o.customerName?.toLowerCase().includes(search.toLowerCase()) ||
                         String(o.id).includes(search);
     const matchStatus = statusFilter === "Tất cả" || o.status === statusFilter;
-    return matchSearch && matchStatus;
+
+    const created = new Date(o.createdAt);
+    const matchDateFrom = !dateFrom || created >= new Date(`${dateFrom}T00:00:00`);
+    // Hết ngày đã chọn (23:59:59) — không bỏ sót đơn đặt trong chính ngày dateTo
+    const matchDateTo = !dateTo || created <= new Date(`${dateTo}T23:59:59`);
+
+    return matchSearch && matchStatus && matchDateFrom && matchDateTo;
   });
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  // exportAll = bỏ qua MỌI bộ lọc (trạng thái, tìm kiếm, ngày) — đúng nghĩa "toàn bộ".
+  // Không tick = dùng chung danh sách filtered với bảng, không tính lại riêng nữa.
   const getExportData = () => (exportAll ? orders : filtered);
 
   const handleExportExcel = () => {
     const data = getExportData();
     if (data.length === 0) { alert("Không có đơn hàng nào để xuất!"); return; }
-    exportExcel(data);
+    exportExcel(data, buildFilename({ statusFilter, dateFrom, dateTo, ext: "xlsx" }));
   };
 
   const handleExportPDF = () => {
     const data = getExportData();
     if (data.length === 0) { alert("Không có đơn hàng nào để xuất!"); return; }
-    exportPDF(data);
+    exportPDF(data, buildFilename({ statusFilter, dateFrom, dateTo, ext: "pdf" }));
   };
 
   return (
@@ -187,45 +221,78 @@ const Orders = () => {
         </div>
       </div>
 
-      {/* Xuất dữ liệu */}
+      {/* Bộ lọc ngày + Xuất dữ liệu */}
       <div
         style={{
-          display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+          display: "flex", flexDirection: "column", gap: 12,
           background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
           padding: "12px 16px", marginBottom: 16,
         }}
       >
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#475569", cursor: "pointer" }}>
-          <input
-            type="checkbox"
-            checked={exportAll}
-            onChange={e => setExportAll(e.target.checked)}
-          />
-          Xuất toàn bộ đơn hàng (bỏ chọn = chỉ xuất theo bộ lọc/tìm kiếm đang hiển thị)
-        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#475569", cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={exportAll}
+              onChange={e => setExportAll(e.target.checked)}
+            />
+            Xuất toàn bộ đơn hàng (bỏ qua mọi bộ lọc bên dưới, kể cả khoảng ngày)
+          </label>
 
-        <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
-          <button
-            onClick={handleExportExcel}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              background: "#16a34a", color: "#fff", border: "none",
-              borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer",
-            }}
-          >
-            📊 Xuất Excel
-          </button>
-          <button
-            onClick={handleExportPDF}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              background: "#dc2626", color: "#fff", border: "none",
-              borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer",
-            }}
-          >
-            🖨️ Xuất PDF
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#475569" }}>
+            <span>Từ ngày</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+              style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "5px 8px", fontSize: 13 }}
+            />
+            <span>đến</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => { setDateTo(e.target.value); setPage(1); }}
+              style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "5px 8px", fontSize: 13 }}
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(""); setDateTo(""); setPage(1); }}
+                style={{ border: "none", background: "none", color: "#dc2626", fontSize: 12, cursor: "pointer" }}
+              >
+                ✕ Xoá ngày
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+            <button
+              onClick={handleExportExcel}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: "#16a34a", color: "#fff", border: "none",
+                borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              📊 Xuất Excel
+            </button>
+            <button
+              onClick={handleExportPDF}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: "#dc2626", color: "#fff", border: "none",
+                borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              🖨️ Xuất PDF
+            </button>
+          </div>
         </div>
+
+        <p style={{ margin: 0, fontSize: 12, color: "#94a3b8" }}>
+          {exportAll
+            ? `Sẽ xuất TOÀN BỘ ${orders.length} đơn hàng, bỏ qua mọi bộ lọc.`
+            : `Bảng đang hiển thị và sẽ xuất ${filtered.length} đơn hàng theo bộ lọc hiện tại.`}
+        </p>
       </div>
 
       {/* Error */}

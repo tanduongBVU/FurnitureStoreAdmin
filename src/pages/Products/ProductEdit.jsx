@@ -4,6 +4,8 @@ import api from "../../services/Api";
 import "./ProductForm.css";
 
 const CATEGORIES = ["Phòng khách", "Phòng ngủ", "Phòng ăn", "Phòng làm việc", "Ban công"];
+const MATERIALS = ["Gỗ tự nhiên", "Gỗ công nghiệp", "Kim loại", "Vải nỉ", "Da/Da công nghiệp", "Mây tre đan", "Kính"];
+const COLORS = ["Nâu gỗ", "Trắng", "Đen", "Xám", "Be/Kem", "Xanh dương", "Xanh lá", "Vàng"];
 
 const ProductEdit = () => {
   const { id } = useParams();
@@ -84,6 +86,18 @@ const ProductEdit = () => {
                 <label htmlFor="category">Danh mục *</label>
                 <select id="category" name="category" value={form.category || ""} onChange={e => set("category", e.target.value)}>
                   {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="material">Chất liệu</label>
+                <select id="material" name="material" value={form.material || MATERIALS[0]} onChange={e => set("material", e.target.value)}>
+                  {MATERIALS.map(m => <option key={m}>{m}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="color">Màu sắc</label>
+                <select id="color" name="color" value={form.color || COLORS[0]} onChange={e => set("color", e.target.value)}>
+                  {COLORS.map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
               <div className="form-group">

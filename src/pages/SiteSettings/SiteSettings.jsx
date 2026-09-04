@@ -49,6 +49,12 @@ const TABS = [
           { key: "hero.slide1.title",    label: "Tiêu đề (xuống dòng bằng Enter)", type: "textarea" },
           { key: "hero.slide1.subtitle", label: "Mô tả ngắn", type: "text" },
           { key: "hero.slide1.image",    label: "URL ảnh nền", type: "text" },
+          {
+            key: "hero.slide1.video",
+            label: "URL video nền (không bắt buộc)",
+            type: "text",
+            hint: "Nếu nhập, video sẽ ưu tiên phát thay cho ảnh nền ở trên (ảnh vẫn dùng làm poster trong lúc video tải). Để trống thì dùng ảnh như bình thường. Video nên nhẹ, không tiếng (site tự tắt tiếng khi phát).",
+          },
           { key: "hero.slide1.accent",   label: "Màu nhấn slide", type: "color" },
           { key: "hero.slide1.bg",       label: "Màu nền slide", type: "color" },
         ],
@@ -59,6 +65,12 @@ const TABS = [
           { key: "hero.slide2.title",    label: "Tiêu đề (xuống dòng bằng Enter)", type: "textarea" },
           { key: "hero.slide2.subtitle", label: "Mô tả ngắn", type: "text" },
           { key: "hero.slide2.image",    label: "URL ảnh nền", type: "text" },
+          {
+            key: "hero.slide2.video",
+            label: "URL video nền (không bắt buộc)",
+            type: "text",
+            hint: "Nếu nhập, video sẽ ưu tiên phát thay cho ảnh nền ở trên. Để trống thì dùng ảnh như bình thường.",
+          },
           { key: "hero.slide2.accent",   label: "Màu nhấn slide", type: "color" },
           { key: "hero.slide2.bg",       label: "Màu nền slide", type: "color" },
         ],
@@ -69,6 +81,12 @@ const TABS = [
           { key: "hero.slide3.title",    label: "Tiêu đề (xuống dòng bằng Enter)", type: "textarea" },
           { key: "hero.slide3.subtitle", label: "Mô tả ngắn", type: "text" },
           { key: "hero.slide3.image",    label: "URL ảnh nền", type: "text" },
+          {
+            key: "hero.slide3.video",
+            label: "URL video nền (không bắt buộc)",
+            type: "text",
+            hint: "Nếu nhập, video sẽ ưu tiên phát thay cho ảnh nền ở trên. Để trống thì dùng ảnh như bình thường.",
+          },
           { key: "hero.slide3.accent",   label: "Màu nhấn slide", type: "color" },
           { key: "hero.slide3.bg",       label: "Màu nền slide", type: "color" },
         ],
@@ -153,6 +171,14 @@ const TABS = [
         ],
       },
       {
+        // MỚI: ảnh minh hoạ cho mục "Vì sao chọn chúng tôi?" — nằm dưới đoạn mô tả
+        // ở cột trái của section này trên trang About.
+        title: "Vì sao chọn chúng tôi",
+        fields: [
+          { key: "aboutpage.whyus.image", label: "URL ảnh minh hoạ", type: "text" },
+        ],
+      },
+      {
         title: "Đội ngũ lãnh đạo",
         fields: [
           { key: "aboutpage.team.member1.image", label: "Người 1 — URL ảnh", type: "text" },
@@ -171,6 +197,21 @@ const TABS = [
           { key: "aboutpage.team.member4.name",  label: "Người 4 — Tên", type: "text" },
           { key: "aboutpage.team.member4.role",  label: "Người 4 — Chức vụ", type: "text" },
           { key: "aboutpage.team.member4.exp",   label: "Người 4 — Kinh nghiệm", type: "text" },
+        ],
+      },
+      {
+        // MỚI: 6 ô URL ảnh cho phần "Dự án tiêu biểu" ở About.jsx — trước đây các dự án
+        // này chỉ hiện emoji cứng (🏡🏨🏢🍽️🚗🏙️), giờ Admin có thể dán URL ảnh thật.
+        // Đặt tên field khớp với thứ tự mảng `projects` cứng trong About.jsx (project1..6),
+        // không đổi tên/thứ tự 2 bên lệch nhau kẻo ảnh hiện sai dự án.
+        title: "Dự án tiêu biểu",
+        fields: [
+          { key: "aboutpage.project1.image", label: "Dự án 1 — Biệt thự Vinhomes Grand Park — URL ảnh", type: "text" },
+          { key: "aboutpage.project2.image", label: "Dự án 2 — Khách sạn The Reverie Saigon — URL ảnh", type: "text" },
+          { key: "aboutpage.project3.image", label: "Dự án 3 — Văn phòng FPT Software HCM — URL ảnh", type: "text" },
+          { key: "aboutpage.project4.image", label: "Dự án 4 — Nhà hàng Cham Charm — URL ảnh", type: "text" },
+          { key: "aboutpage.project5.image", label: "Dự án 5 — Showroom Mercedes-Benz Q7 — URL ảnh", type: "text" },
+          { key: "aboutpage.project6.image", label: "Dự án 6 — Căn hộ Landmark 81 T42 — URL ảnh", type: "text" },
         ],
       },
     ],

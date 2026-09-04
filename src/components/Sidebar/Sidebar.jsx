@@ -4,6 +4,7 @@ import "./Sidebar.css";
 const navItems = [
   { path: "/dashboard",  icon: "📊", label: "Dashboard" },
   { path: "/products",   icon: "🪑", label: "Sản phẩm" },
+  { path: "/bundles",    icon: "🎁", label: "Combo" },
   { path: "/services",   icon: "🛠️", label: "Dịch vụ" },
   { path: "/projects",   icon: "🏛️", label: "Dự án" },
   { path: "/blogposts",  icon: "📝", label: "Cẩm nang" },
