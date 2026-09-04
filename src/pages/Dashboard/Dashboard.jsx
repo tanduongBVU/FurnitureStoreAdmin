@@ -102,6 +102,23 @@ const Dashboard = () => {
   const contactsLastMonth = contacts.filter(c => isSameMonth(c.createdAt, lastMonthRef)).length;
   const contactsDelta = contactsThisMonth - contactsLastMonth;
 
+  // ── Giá trị đơn hàng trung bình (AOV) — chỉ tính đơn Hoàn thành, so sánh tháng này với tháng trước ──
+  const completedThisMonth = completedOrders.filter(o => isSameMonth(o.createdAt, now));
+  const completedLastMonthList = completedOrders.filter(o => isSameMonth(o.createdAt, lastMonthRef));
+  const aovThisMonth = completedThisMonth.length > 0 ? revenueThisMonth / completedThisMonth.length : 0;
+  const aovLastMonth = completedLastMonthList.length > 0 ? revenueLastMonth / completedLastMonthList.length : 0;
+  const aovChange = pctChange(aovThisMonth, aovLastMonth);
+
+  // ── Tỷ lệ đơn huỷ — trên TỔNG số đơn phát sinh trong tháng (không chỉ đơn Hoàn thành) ──
+  const cancelledThisMonth = orders.filter(o => o.status === "Huỷ" && isSameMonth(o.createdAt, now)).length;
+  const cancelledLastMonth = orders.filter(o => o.status === "Huỷ" && isSameMonth(o.createdAt, lastMonthRef)).length;
+  const cancellationRateThisMonth = ordersThisMonth > 0 ? (cancelledThisMonth / ordersThisMonth) * 100 : 0;
+  const cancellationRateLastMonth = ordersLastMonth > 0 ? (cancelledLastMonth / ordersLastMonth) * 100 : 0;
+  // Chênh lệch tính theo ĐIỂM PHẦN TRĂM (hiệu số trực tiếp), KHÔNG dùng pctChange — vì đây đã
+  // là 1 tỷ lệ % rồi, lấy % thay đổi của 1 con số % sẽ gây hiểu lầm (VD: từ 2% lên 4% là
+  // "tăng 100%" theo pctChange, trong khi thực chất chỉ tăng 2 điểm %, dễ gây hoảng khi đọc).
+  const cancellationChange = cancellationRateThisMonth - cancellationRateLastMonth;
+
   const stats = [
     {
       label: "Tổng doanh thu", value: formatPrice(totalRevenue),
@@ -122,6 +139,16 @@ const Dashboard = () => {
       label: "Liên hệ chưa xử lý", value: String(newContacts.length),
       change: `${contactsDelta >= 0 ? "+" : ""}${contactsDelta} so với tháng trước`,
       up: contactsDelta <= 0, icon: "✉️", color: "#ef4444",
+    },
+    {
+      label: "Giá trị đơn TB (tháng này)", value: formatPrice(aovThisMonth),
+      change: `${aovChange >= 0 ? "+" : ""}${aovChange.toFixed(1)}% so với tháng trước`,
+      up: aovChange >= 0, icon: "🧾", color: "#0ea5e9",
+    },
+    {
+      label: "Tỷ lệ đơn huỷ (tháng này)", value: `${cancellationRateThisMonth.toFixed(1)}%`,
+      change: `${cancellationChange >= 0 ? "+" : ""}${cancellationChange.toFixed(1)} điểm % so với tháng trước`,
+      up: cancellationChange <= 0, icon: "❌", color: "#dc2626",
     },
   ];
 
@@ -206,6 +233,11 @@ const Dashboard = () => {
   // từng bán (0 lượt) không đưa vào đây vì không phản ánh đúng ý "bán chậm", mà chỉ
   // đơn giản là chưa ai mua (có thể do mới đăng, không phải do ế).
   const worstSelling = [...productSalesRanking].reverse().slice(0, 5);
+
+  // ── 3. Sản phẩm ĐANG BÁN nhưng CHƯA TỪNG có lượt bán nào (0 lượt, kể cả sản phẩm đã
+  // đăng lâu) — khác hẳn "bán chậm nhất" ở trên (worstSelling chỉ xét sản phẩm ĐÃ có bán).
+  // Đây là danh sách để Admin cân nhắc: cần quảng bá thêm, giảm giá, hay ngừng nhập nữa. ──
+  const neverSoldProducts = activeProducts.filter(p => !soldQtyByProduct[p.id]);
 
   return (
     <div className="dashboard">
@@ -403,6 +435,30 @@ const Dashboard = () => {
             <strong>{formatPrice(p.price)}</strong>
           </div>
         ))}
+      </div>
+
+      {/* Sản phẩm chưa từng bán được — khác "bán chậm nhất" (đó chỉ xét SP đã có ít nhất 1 lượt bán) */}
+      <div className="dashboard-card">
+        <div className="dashboard-card__header">
+          <h2>Sản phẩm chưa từng bán được ({neverSoldProducts.length})</h2>
+        </div>
+        {neverSoldProducts.length === 0 ? (
+          <p className="empty-note">🎉 Mọi sản phẩm đang bán đều đã có ít nhất 1 lượt bán.</p>
+        ) : (
+          <>
+            {neverSoldProducts.slice(0, 8).map((p) => (
+              <div className="quick-item" key={p.id}>
+                <span>📦 {p.name} — {p.category || "Chưa phân loại"}</span>
+                <span className="badge badge--muted">Chưa bán được</span>
+              </div>
+            ))}
+            {neverSoldProducts.length > 8 && (
+              <p className="empty-note" style={{ marginTop: 8 }}>
+                ...và {neverSoldProducts.length - 8} sản phẩm khác
+              </p>
+            )}
+          </>
+        )}
       </div>
 
     </div>

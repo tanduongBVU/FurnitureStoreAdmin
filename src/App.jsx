@@ -7,6 +7,10 @@ import Products from "./pages/Products/Products";
 import ProductCreate from "./pages/Products/ProductCreate";
 import ProductEdit from "./pages/Products/ProductEdit";
 
+import Bundles from "./pages/Bundles/Bundles";
+import BundleCreate from "./pages/Bundles/BundleCreate";
+import BundleEdit from "./pages/Bundles/BundleEdit";
+
 import Services from "./pages/Services/Services";
 import Projects from "./pages/Projects/Projects";
 
@@ -51,6 +55,10 @@ const App = () => {
         <Route path="products" element={<Products />} />
         <Route path="products/create" element={<ProductCreate />} />
         <Route path="products/edit/:id" element={<ProductEdit />} />
+
+        <Route path="bundles" element={<Bundles />} />
+        <Route path="bundles/create" element={<BundleCreate />} />
+        <Route path="bundles/edit/:id" element={<BundleEdit />} />
 
         <Route path="services" element={<Services />} />
         <Route path="projects" element={<Projects />} />
