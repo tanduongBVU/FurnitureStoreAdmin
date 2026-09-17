@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import api from "../../services/Api";
 import "./SiteSettings.css";
 
-// Chia thành 4 TAB thay vì 1 trang dài liên tục — mỗi tab gồm nhiều "nhóm" (group) field,
-// giữ đúng cấu trúc field/key cũ để không phá vỡ dữ liệu đã lưu, chỉ tổ chức lại cách hiển thị.
 const TABS = [
   {
     id: "brand",
@@ -44,51 +42,63 @@ const TABS = [
     label: "Trang chủ",
     groups: [
       {
+        title: "Chế độ hiển thị Banner",
+        fields: [
+          {
+            key: "hero.mode",
+            label: "Kiểu banner trang chủ",
+            type: "select",
+            options: [
+              { value: "slides", label: "Xoay vòng 3 ảnh (mặc định)" },
+              { value: "video", label: "1 video nền duy nhất" },
+            ],
+            hint: "Chọn 'video' sẽ thay thế HOÀN TOÀN slider — chỉ còn 1 video nền, không còn dots/mũi tên chuyển slide.",
+          },
+        ],
+      },
+      {
         title: "Slide 1 — Banner trang chủ",
+        showIf: v => (v["hero.mode"] || "slides") === "slides",
         fields: [
           { key: "hero.slide1.title",    label: "Tiêu đề (xuống dòng bằng Enter)", type: "textarea" },
           { key: "hero.slide1.subtitle", label: "Mô tả ngắn", type: "text" },
           { key: "hero.slide1.image",    label: "URL ảnh nền", type: "text" },
-          {
-            key: "hero.slide1.video",
-            label: "URL video nền (không bắt buộc)",
-            type: "text",
-            hint: "Nếu nhập, video sẽ ưu tiên phát thay cho ảnh nền ở trên (ảnh vẫn dùng làm poster trong lúc video tải). Để trống thì dùng ảnh như bình thường. Video nên nhẹ, không tiếng (site tự tắt tiếng khi phát).",
-          },
           { key: "hero.slide1.accent",   label: "Màu nhấn slide", type: "color" },
           { key: "hero.slide1.bg",       label: "Màu nền slide", type: "color" },
         ],
       },
       {
         title: "Slide 2 — Banner trang chủ",
+        showIf: v => (v["hero.mode"] || "slides") === "slides",
         fields: [
           { key: "hero.slide2.title",    label: "Tiêu đề (xuống dòng bằng Enter)", type: "textarea" },
           { key: "hero.slide2.subtitle", label: "Mô tả ngắn", type: "text" },
           { key: "hero.slide2.image",    label: "URL ảnh nền", type: "text" },
-          {
-            key: "hero.slide2.video",
-            label: "URL video nền (không bắt buộc)",
-            type: "text",
-            hint: "Nếu nhập, video sẽ ưu tiên phát thay cho ảnh nền ở trên. Để trống thì dùng ảnh như bình thường.",
-          },
           { key: "hero.slide2.accent",   label: "Màu nhấn slide", type: "color" },
           { key: "hero.slide2.bg",       label: "Màu nền slide", type: "color" },
         ],
       },
       {
         title: "Slide 3 — Banner trang chủ",
+        showIf: v => (v["hero.mode"] || "slides") === "slides",
         fields: [
           { key: "hero.slide3.title",    label: "Tiêu đề (xuống dòng bằng Enter)", type: "textarea" },
           { key: "hero.slide3.subtitle", label: "Mô tả ngắn", type: "text" },
           { key: "hero.slide3.image",    label: "URL ảnh nền", type: "text" },
-          {
-            key: "hero.slide3.video",
-            label: "URL video nền (không bắt buộc)",
-            type: "text",
-            hint: "Nếu nhập, video sẽ ưu tiên phát thay cho ảnh nền ở trên. Để trống thì dùng ảnh như bình thường.",
-          },
           { key: "hero.slide3.accent",   label: "Màu nhấn slide", type: "color" },
           { key: "hero.slide3.bg",       label: "Màu nền slide", type: "color" },
+        ],
+      },
+      {
+        title: "Video nền (khi chọn kiểu Video)",
+        showIf: v => v["hero.mode"] === "video",
+        fields: [
+          { key: "hero.video.url",      label: "URL video nền", type: "text", hint: "Video nên nhẹ, không tiếng (site tự tắt tiếng khi phát)." },
+          { key: "hero.video.poster",   label: "URL ảnh poster (hiện trong lúc video tải)", type: "text" },
+          { key: "hero.video.title",    label: "Tiêu đề (xuống dòng bằng Enter)", type: "textarea" },
+          { key: "hero.video.subtitle", label: "Mô tả ngắn", type: "text" },
+          { key: "hero.video.accent",   label: "Màu nhấn", type: "color" },
+          { key: "hero.video.bg",       label: "Màu nền (dự phòng khi video chưa tải)", type: "color" },
         ],
       },
       {
@@ -116,6 +126,39 @@ const TABS = [
           { key: "rooms.room6.image", label: "Ban Công — URL ảnh", type: "text" },
         ],
       },
+      {
+        title: "Banner ảnh khuyến mãi (chèn giữa trang chủ)",
+        fields: [
+          {
+            key: "homeBanner.enabled",
+            label: "Hiển thị banner này",
+            type: "select",
+            options: [
+              { value: "false", label: "Tắt" },
+              { value: "true", label: "Bật" },
+            ],
+            hint: "Đây là banner ẢNH LỚN riêng cho trang chủ, khác với banner chữ mỏng ở đầu mọi trang (tab Thương hiệu & Màu sắc) — bật/tắt độc lập với nhau. Banner này CHỈ hiện ảnh, không chèn thêm chữ/nút — phù hợp khi ảnh đã có sẵn chữ/nút thiết kế ngay trong hình.",
+          },
+          {
+            key: "homeBanner.position",
+            label: "Vị trí chèn trên trang chủ",
+            type: "select",
+            options: [
+              { value: "after-hero", label: "Ngay sau Banner đầu trang (Hero)" },
+              { value: "after-about", label: "Sau mục Giới thiệu" },
+              { value: "after-products", label: "Sau mục Sản phẩm bán chạy" },
+              { value: "after-rooms", label: "Sau mục Danh mục phòng" },
+              { value: "before-footer", label: "Ngay trước Footer (cuối trang)" },
+            ],
+          },
+          { key: "homeBanner.image", label: "URL ảnh banner", type: "text" },
+          {
+            key: "homeBanner.linkUrl",
+            label: "Đường dẫn khi bấm vào ảnh (VD: /sale) — để trống nếu không cần bấm được",
+            type: "text",
+          },
+        ],
+      },
     ],
   },
   {
@@ -135,6 +178,23 @@ const TABS = [
           { key: "footer.phone",   label: "Số điện thoại", type: "text" },
           { key: "footer.email",   label: "Email", type: "text" },
           { key: "footer.hours",   label: "Giờ làm việc", type: "text" },
+        ],
+      },
+      {
+        title: "Liên kết mạng xã hội (bong bóng nổi)",
+        fields: [
+          {
+            key: "social.zaloPhone",
+            label: "Số điện thoại Zalo",
+            type: "text",
+            hint: "Chỉ cần nhập số điện thoại (VD: 0909123456), có dấu cách/gạch ngang cũng được, hệ thống tự lọc. Bấm vào bong bóng Zalo sẽ mở khung chat Zalo với đúng số này.",
+          },
+          {
+            key: "social.facebookUrl",
+            label: "Link trang Facebook (URL đầy đủ)",
+            type: "text",
+            hint: "Dán nguyên link trang cá nhân hoặc fanpage Facebook, VD: https://facebook.com/luxwood.vn — bấm vào bong bóng Facebook sẽ mở thẳng trang này.",
+          },
         ],
       },
     ],
@@ -171,8 +231,6 @@ const TABS = [
         ],
       },
       {
-        // MỚI: ảnh minh hoạ cho mục "Vì sao chọn chúng tôi?" — nằm dưới đoạn mô tả
-        // ở cột trái của section này trên trang About.
         title: "Vì sao chọn chúng tôi",
         fields: [
           { key: "aboutpage.whyus.image", label: "URL ảnh minh hoạ", type: "text" },
@@ -200,10 +258,6 @@ const TABS = [
         ],
       },
       {
-        // MỚI: 6 ô URL ảnh cho phần "Dự án tiêu biểu" ở About.jsx — trước đây các dự án
-        // này chỉ hiện emoji cứng (🏡🏨🏢🍽️🚗🏙️), giờ Admin có thể dán URL ảnh thật.
-        // Đặt tên field khớp với thứ tự mảng `projects` cứng trong About.jsx (project1..6),
-        // không đổi tên/thứ tự 2 bên lệch nhau kẻo ảnh hiện sai dự án.
         title: "Dự án tiêu biểu",
         fields: [
           { key: "aboutpage.project1.image", label: "Dự án 1 — Biệt thự Vinhomes Grand Park — URL ảnh", type: "text" },
@@ -225,6 +279,9 @@ const SiteSettings = () => {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState(TABS[0].id);
+  // Tên field (key) đang tải ảnh lên — dùng để disable đúng 1 nút "Tải ảnh lên"
+  // đang chạy, các field khác vẫn dùng được bình thường trong lúc chờ.
+  const [uploadingKey, setUploadingKey] = useState(null);
 
   const fetchSettings = async () => {
     try {
@@ -244,6 +301,40 @@ const SiteSettings = () => {
   const set = (key, v) => {
     setValues(p => ({ ...p, [key]: v }));
     setSaved(false);
+  };
+
+  // Upload ảnh thật từ máy — gọi endpoint mới /Upload ở Backend, nhận về URL rồi
+  // gán thẳng vào field như thể Admin tự dán URL vào (tái dùng nguyên hàm `set`
+  // ở trên, nên preview ảnh bên dưới ô cũng tự động cập nhật theo).
+  const handleImageUpload = async (key, file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Vui lòng chọn đúng file ảnh (jpg, png, webp...).");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Ảnh vượt quá 10MB, vui lòng chọn ảnh nhẹ hơn.");
+      return;
+    }
+    setUploadingKey(key);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      // KHÔNG tự set header Content-Type — nhưng axios instance `api` có sẵn
+      // header mặc định "application/json" cho MỌI request (thường thấy khi
+      // setup 1 instance dùng chung). Header đó đè lên, khiến trình duyệt
+      // không tự sinh lại "multipart/form-data; boundary=..." như bình thường,
+      // Backend nhận sai Content-Type nên từ chối với lỗi 415. Ép về `undefined`
+      // CHỈ cho riêng request này để trình duyệt tự tính lại đúng boundary.
+      const res = await api.post("/Upload", formData, {
+        headers: { "Content-Type": undefined },
+      });
+      set(key, res.data.url);
+    } catch (err) {
+      alert(err.response?.data?.message || "Tải ảnh lên thất bại, vui lòng thử lại.");
+    } finally {
+      setUploadingKey(null);
+    }
   };
 
   const handleSave = async () => {
@@ -301,7 +392,6 @@ const SiteSettings = () => {
       {error && <div className="form-error">⚠️ {error}</div>}
       {saved && <div className="form-success">✓ Đã lưu thành công! Tải lại trang Client để xem thay đổi.</div>}
 
-      {/* Tab ngang — bấm để chuyển nhóm, không cuộn qua toàn bộ 11 nhóm field như trước */}
       <div className="settings-tabs">
         {TABS.map(tab => (
           <button
@@ -314,7 +404,9 @@ const SiteSettings = () => {
         ))}
       </div>
 
-      {currentTab.groups.map(group => (
+      {currentTab.groups
+        .filter(group => !group.showIf || group.showIf(values))
+        .map(group => (
         <div className="settings-card" key={group.title}>
           <h3>{group.title}</h3>
           <div className="settings-grid">
@@ -352,6 +444,38 @@ const SiteSettings = () => {
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
+                ) : field.type === "text" && field.key.includes("image") ? (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      type="text"
+                      placeholder="Dán URL ảnh, hoặc tải lên từ máy →"
+                      value={values[field.key] || ""}
+                      onChange={e => set(field.key, e.target.value)}
+                      style={{ flex: 1 }}
+                    />
+                    <label
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "0 14px", borderRadius: 8, border: "1.5px solid #d8cfc0",
+                        background: uploadingKey === field.key ? "#f0ebe0" : "#fff",
+                        fontSize: 13, whiteSpace: "nowrap",
+                        cursor: uploadingKey === field.key ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {uploadingKey === field.key ? "Đang tải..." : "📁 Tải ảnh lên"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        disabled={uploadingKey === field.key}
+                        onChange={e => {
+                          const file = e.target.files[0];
+                          handleImageUpload(field.key, file);
+                          e.target.value = ""; // reset để chọn lại cùng 1 file vẫn kích hoạt onChange
+                        }}
+                      />
+                    </label>
+                  </div>
                 ) : (
                   <input
                     type="text"
