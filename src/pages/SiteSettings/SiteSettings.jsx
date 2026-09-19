@@ -151,6 +151,17 @@ const TABS = [
               { value: "before-footer", label: "Ngay trước Footer (cuối trang)" },
             ],
           },
+          {
+            key: "homeBanner.align",
+            label: "Canh lề ảnh trong khung",
+            type: "select",
+            options: [
+              { value: "center", label: "Giữa" },
+              { value: "left", label: "Trái" },
+              { value: "right", label: "Phải" },
+            ],
+            hint: "Chỉ thấy rõ khác biệt khi ảnh HẸP hơn khung nội dung (không đủ rộng để lấp đầy) — ảnh không bị kéo giãn méo, chỉ đổi vị trí nằm trong khung.",
+          },
           { key: "homeBanner.image", label: "URL ảnh banner", type: "text" },
           {
             key: "homeBanner.linkUrl",
