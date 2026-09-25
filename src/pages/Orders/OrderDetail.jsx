@@ -5,6 +5,11 @@ import "./OrderDetail.css";
 
 const STATUS_LIST = ["Chờ xác nhận", "Đang xử lý", "Đang giao", "Hoàn thành", "Huỷ"];
 
+// LƯU Ý: 2 giá trị này PHẢI khớp CHÍNH XÁC với chuỗi Backend đang lưu ở cột PaymentStatus
+// (xem Order.cs / OrdersController.cs), và giống hệt 2 hằng số cùng tên ở Orders.jsx.
+const PAYMENT_PAID = "Đã thanh toán";
+const PAYMENT_UNPAID = "Chưa thanh toán";
+
 const OrderDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -12,6 +17,7 @@ const OrderDetail = () => {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -34,6 +40,24 @@ const OrderDetail = () => {
     }
   };
 
+  // Xác nhận đã nhận tiền — có hiệu lực NGAY khi bấm (độc lập với nút "Lưu trạng thái"
+  // bên dưới), và Admin ở lại trang này để xem kết quả thay vì bị đưa về danh sách.
+  const handleConfirmPayment = async () => {
+    if (!window.confirm(`Xác nhận đã nhận đủ tiền của đơn #${order.id}?`)) return;
+    setConfirmingPayment(true);
+    setError("");
+    try {
+      await api.patch(`/Orders/${id}/payment-status`, JSON.stringify(PAYMENT_PAID), {
+        headers: { "Content-Type": "application/json" }
+      });
+      setOrder(prev => ({ ...prev, paymentStatus: PAYMENT_PAID }));
+    } catch {
+      setError("Lỗi khi xác nhận thanh toán!");
+    } finally {
+      setConfirmingPayment(false);
+    }
+  };
+
   if (loading) return (
     <div className="order-detail-page">
       <div className="loading-box"><div className="spinner" /><p>Đang tải...</p></div>
@@ -46,6 +70,8 @@ const OrderDetail = () => {
       <button className="btn-back" onClick={() => navigate("/orders")}>← Quay lại</button>
     </div>
   );
+
+  const paid = order.paymentStatus === PAYMENT_PAID;
 
   return (
     <div className="order-detail-page">
@@ -78,6 +104,36 @@ const OrderDetail = () => {
               <strong>{Number(order.total).toLocaleString("vi-VN")} ₫</strong>
             </div>
           </div>
+        </div>
+
+        <div className="status-update">
+          <h3>Thanh toán</h3>
+          <p style={{ margin: "0 0 8px", fontSize: 14 }}>
+            <span style={{ color: "#64748b" }}>Phương thức:</span>{" "}
+            <strong>{order.paymentMethod || "COD"}</strong>
+          </p>
+          <p style={{ margin: "0 0 12px", fontSize: 14 }}>
+            <span style={{ color: "#64748b" }}>Trạng thái:</span>{" "}
+            <span className={`badge ${paid ? "badge--success" : "badge--pending"}`}>
+              {paid ? PAYMENT_PAID : PAYMENT_UNPAID}
+            </span>
+          </p>
+          {/* Chỉ hiện khi đơn chưa thanh toán và chưa bị huỷ */}
+          {!paid && order.status !== "Huỷ" && (
+            <button
+              type="button"
+              onClick={handleConfirmPayment}
+              disabled={confirmingPayment}
+              style={{
+                background: "#16a34a", color: "#fff", border: "none", borderRadius: 8,
+                padding: "10px 18px", fontSize: 14, fontWeight: 600,
+                cursor: confirmingPayment ? "not-allowed" : "pointer",
+                opacity: confirmingPayment ? 0.6 : 1,
+              }}
+            >
+              {confirmingPayment ? "Đang xác nhận..." : "✓ Xác nhận đã nhận tiền"}
+            </button>
+          )}
         </div>
 
         <div className="status-update">

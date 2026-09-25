@@ -14,6 +14,14 @@ const STATUS_CLASS = {
 };
 const PAGE_SIZE = 6;
 
+// ── Trạng thái thanh toán ──
+// LƯU Ý: 2 giá trị này PHẢI khớp CHÍNH XÁC với chuỗi Backend đang lưu ở cột PaymentStatus
+// (xem Order.cs / OrdersController.cs). Nếu Backend dùng chuỗi khác (VD "Paid"/"Unpaid")
+// thì chỉ cần sửa ĐÚNG 2 dòng này, các chỗ còn lại tự theo.
+const PAYMENT_PAID = "Đã thanh toán";
+const PAYMENT_UNPAID = "Chưa thanh toán";
+const isPaid = (o) => o.paymentStatus === PAYMENT_PAID;
+
 // Bỏ dấu tiếng Việt + khoảng trắng — dùng để tạo TÊN FILE an toàn, tránh vài hệ điều hành
 // cũ hoặc phần mềm xử lý file bị lỗi với ký tự có dấu trong tên file.
 const slugify = (str) =>
@@ -44,13 +52,14 @@ const exportExcel = (data, filename) => {
     "Sản phẩm": o.orderItems?.map(i => `${i.productName} x${i.quantity}`).join(", ") || "",
     "Mã giảm giá": o.couponCode || "—",
     "Tổng tiền (₫)": o.total,
+    "Thanh toán": `${o.paymentMethod || "COD"} — ${isPaid(o) ? PAYMENT_PAID : PAYMENT_UNPAID}`,
     "Trạng thái": o.status,
     "Ngày đặt": new Date(o.createdAt).toLocaleDateString("vi-VN"),
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
   ws["!cols"] = [
     { wch: 8 }, { wch: 22 }, { wch: 14 }, { wch: 32 },
-    { wch: 45 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 },
+    { wch: 45 }, { wch: 14 }, { wch: 14 }, { wch: 26 }, { wch: 14 }, { wch: 12 },
   ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Đơn hàng");
@@ -66,6 +75,7 @@ const exportPDF = (data, filename) => {
       <td>${o.orderItems?.map(i => `${i.productName} x${i.quantity}`).join(", ") || "—"}</td>
       <td>${o.couponCode || "—"}</td>
       <td class="num">${Number(o.total).toLocaleString("vi-VN")} ₫</td>
+      <td>${o.paymentMethod || "COD"}<br/><span class="muted">${isPaid(o) ? PAYMENT_PAID : PAYMENT_UNPAID}</span></td>
       <td>${new Date(o.createdAt).toLocaleDateString("vi-VN")}</td>
       <td>${o.status}</td>
     </tr>
@@ -99,7 +109,7 @@ const exportPDF = (data, filename) => {
         <thead>
           <tr>
             <th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th>Mã giảm giá</th>
-            <th>Tổng tiền</th><th>Ngày đặt</th><th>Trạng thái</th>
+            <th>Tổng tiền</th><th>Thanh toán</th><th>Ngày đặt</th><th>Trạng thái</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -107,7 +117,7 @@ const exportPDF = (data, filename) => {
           <tr>
             <td colspan="4">Tổng cộng</td>
             <td class="num">${totalSum.toLocaleString("vi-VN")} ₫</td>
-            <td colspan="2"></td>
+            <td colspan="3"></td>
           </tr>
         </tfoot>
       </table>
@@ -137,6 +147,7 @@ const Orders = () => {
   const [statusFilter, setStatusFilter] = useState("Tất cả");
   const [page, setPage] = useState(1);
   const [exportAll, setExportAll] = useState(false); // true = xuất TOÀN BỘ, bỏ qua mọi bộ lọc kể cả ngày
+  const [confirmingId, setConfirmingId] = useState(null); // id đơn đang gọi API xác nhận thanh toán
 
   // Khoảng ngày — giờ là 1 điều kiện lọc CHUNG với Trạng thái + Tìm kiếm, áp dụng cho cả
   // bảng hiển thị bên dưới lẫn dữ liệu xuất file, không còn tách riêng như trước.
@@ -157,6 +168,25 @@ const Orders = () => {
   };
 
   useEffect(() => { fetchOrders(); }, []);
+
+  // Xác nhận ngay trên danh sách: đã nhận được tiền của đơn này (QR/chuyển khoản, hoặc COD
+  // sau khi giao xong). Gọi PATCH /Orders/{id}/payment-status rồi cập nhật thẳng dòng đó
+  // trong state, không cần tải lại cả danh sách.
+  const handleConfirmPayment = async (order) => {
+    if (!window.confirm(`Xác nhận đã nhận đủ tiền của đơn #${order.id}?`)) return;
+    setConfirmingId(order.id);
+    setError("");
+    try {
+      await api.patch(`/Orders/${order.id}/payment-status`, JSON.stringify(PAYMENT_PAID), {
+        headers: { "Content-Type": "application/json" },
+      });
+      setOrders(prev => prev.map(o => (o.id === order.id ? { ...o, paymentStatus: PAYMENT_PAID } : o)));
+    } catch {
+      setError(`Không thể xác nhận thanh toán cho đơn #${order.id}. Kiểm tra lại backend.`);
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   const filtered = orders.filter(o => {
     const matchSearch = o.customerName?.toLowerCase().includes(search.toLowerCase()) ||
@@ -316,6 +346,7 @@ const Orders = () => {
                   <th>Khách hàng</th>
                   <th>Sản phẩm</th>
                   <th>Tổng tiền</th>
+                  <th>Thanh toán</th>
                   <th>Ngày đặt</th>
                   <th>Trạng thái</th>
                   <th>Thao tác</th>
@@ -323,25 +354,53 @@ const Orders = () => {
               </thead>
               <tbody>
                 {paginated.length === 0 ? (
-                  <tr><td colSpan={7} className="empty-row">Không tìm thấy đơn hàng nào</td></tr>
-                ) : paginated.map(o => (
-                  <tr key={o.id}>
-                    <td><strong>#{o.id}</strong></td>
-                    <td>
-                      <p className="cust-name">{o.customerName}</p>
-                      <p className="cust-phone">{o.phone}</p>
-                    </td>
-                    <td className="products-col">
-                      {o.orderItems?.map(i => `${i.productName} x${i.quantity}`).join(", ") || "—"}
-                    </td>
-                    <td><strong>{Number(o.total).toLocaleString("vi-VN")} ₫</strong></td>
-                    <td>{new Date(o.createdAt).toLocaleDateString("vi-VN")}</td>
-                    <td><span className={`badge ${STATUS_CLASS[o.status]}`}>{o.status}</span></td>
-                    <td>
-                      <button className="btn-view" onClick={() => navigate(`/orders/${o.id}`)}>👁️ Chi tiết</button>
-                    </td>
-                  </tr>
-                ))}
+                  <tr><td colSpan={8} className="empty-row">Không tìm thấy đơn hàng nào</td></tr>
+                ) : paginated.map(o => {
+                  const paid = isPaid(o);
+                  return (
+                    <tr key={o.id}>
+                      <td><strong>#{o.id}</strong></td>
+                      <td>
+                        <p className="cust-name">{o.customerName}</p>
+                        <p className="cust-phone">{o.phone}</p>
+                      </td>
+                      <td className="products-col">
+                        {o.orderItems?.map(i => `${i.productName} x${i.quantity}`).join(", ") || "—"}
+                      </td>
+                      <td><strong>{Number(o.total).toLocaleString("vi-VN")} ₫</strong></td>
+                      <td>
+                        <span style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+                          {o.paymentMethod || "COD"}
+                        </span>
+                        <span className={`badge ${paid ? "badge--success" : "badge--pending"}`}>
+                          {paid ? PAYMENT_PAID : PAYMENT_UNPAID}
+                        </span>
+                      </td>
+                      <td>{new Date(o.createdAt).toLocaleDateString("vi-VN")}</td>
+                      <td><span className={`badge ${STATUS_CLASS[o.status]}`}>{o.status}</span></td>
+                      <td>
+                        <button className="btn-view" onClick={() => navigate(`/orders/${o.id}`)}>👁️ Chi tiết</button>
+                        {/* Chỉ hiện với đơn chưa thanh toán và chưa bị huỷ */}
+                        {!paid && o.status !== "Huỷ" && (
+                          <button
+                            onClick={() => handleConfirmPayment(o)}
+                            disabled={confirmingId === o.id}
+                            style={{
+                              display: "block", marginTop: 6, width: "100%",
+                              background: "#16a34a", color: "#fff", border: "none",
+                              borderRadius: 6, padding: "6px 10px", fontSize: 12, fontWeight: 600,
+                              cursor: confirmingId === o.id ? "not-allowed" : "pointer",
+                              opacity: confirmingId === o.id ? 0.6 : 1,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {confirmingId === o.id ? "Đang xác nhận..." : "✓ Đã nhận tiền"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

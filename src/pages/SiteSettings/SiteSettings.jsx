@@ -127,17 +127,17 @@ const TABS = [
         ],
       },
       {
-        title: "Banner ảnh khuyến mãi (chèn giữa trang chủ)",
+        title: "Banner NGANG — chèn giữa trang chủ",
         fields: [
           {
             key: "homeBanner.enabled",
-            label: "Hiển thị banner này",
+            label: "Hiển thị banner ngang",
             type: "select",
             options: [
               { value: "false", label: "Tắt" },
               { value: "true", label: "Bật" },
             ],
-            hint: "Đây là banner ẢNH LỚN riêng cho trang chủ, khác với banner chữ mỏng ở đầu mọi trang (tab Thương hiệu & Màu sắc) — bật/tắt độc lập với nhau. Banner này CHỈ hiện ảnh, không chèn thêm chữ/nút — phù hợp khi ảnh đã có sẵn chữ/nút thiết kế ngay trong hình.",
+            hint: "Banner ẢNH LỚN nằm giữa trang chủ, khác với banner chữ mỏng ở đầu mọi trang (tab Thương hiệu & Màu sắc) và HOÀN TOÀN ĐỘC LẬP với banner dọc 2 bên ở nhóm bên dưới. Chỉ hiện ảnh, không chèn thêm chữ/nút — phù hợp khi ảnh đã có sẵn chữ/nút thiết kế ngay trong hình.",
           },
           {
             key: "homeBanner.position",
@@ -162,10 +162,48 @@ const TABS = [
             ],
             hint: "Chỉ thấy rõ khác biệt khi ảnh HẸP hơn khung nội dung (không đủ rộng để lấp đầy) — ảnh không bị kéo giãn méo, chỉ đổi vị trí nằm trong khung.",
           },
-          { key: "homeBanner.image", label: "URL ảnh banner", type: "text" },
+          { key: "homeBanner.image", label: "URL ảnh banner ngang", type: "text" },
           {
             key: "homeBanner.linkUrl",
             label: "Đường dẫn khi bấm vào ảnh (VD: /sale) — để trống nếu không cần bấm được",
+            type: "text",
+          },
+        ],
+      },
+      {
+        title: "Banner DỌC — 2 bên lề trái/phải trang chủ",
+        fields: [
+          {
+            key: "homeBanner.showSides",
+            label: "Hiển thị banner dọc 2 bên",
+            type: "select",
+            options: [
+              { value: "false", label: "Tắt" },
+              { value: "true", label: "Bật" },
+            ],
+            hint: "ĐỘC LẬP với banner ngang: bật/tắt riêng, vị trí riêng, ảnh riêng — không cần banner ngang phải bật. Chỉ hiện trên màn hình rộng từ 1600px (màn nhỏ hơn không đủ chỗ trống nên tự ẩn). Khi cuộn, banner dính theo màn hình khoảng 2 màn hình cuộn rồi mới trôi đi. Bên nào chưa điền ảnh thì bên đó tự ẩn.",
+          },
+          {
+            key: "homeBanner.sidePosition",
+            label: "Vị trí bắt đầu trên trang chủ",
+            type: "select",
+            options: [
+              { value: "after-hero", label: "Ngay sau Banner đầu trang (Hero)" },
+              { value: "after-about", label: "Sau mục Giới thiệu" },
+              { value: "after-products", label: "Sau mục Sản phẩm bán chạy" },
+            ],
+            hint: "Chỉ có 3 vị trí đầu vì banner dọc kéo dài xuống phía dưới khoảng 2 màn hình — đặt ở cuối trang sẽ bị tràn ra ngoài Footer.",
+          },
+          { key: "homeBanner.sideLeft.image", label: "Ảnh bên TRÁI — URL ảnh", type: "text" },
+          {
+            key: "homeBanner.sideLeft.linkUrl",
+            label: "Ảnh bên TRÁI — đường dẫn khi bấm (để trống nếu không cần)",
+            type: "text",
+          },
+          { key: "homeBanner.sideRight.image", label: "Ảnh bên PHẢI — URL ảnh", type: "text" },
+          {
+            key: "homeBanner.sideRight.linkUrl",
+            label: "Ảnh bên PHẢI — đường dẫn khi bấm (để trống nếu không cần)",
             type: "text",
           },
         ],
@@ -205,6 +243,47 @@ const TABS = [
             label: "Link trang Facebook (URL đầy đủ)",
             type: "text",
             hint: "Dán nguyên link trang cá nhân hoặc fanpage Facebook, VD: https://facebook.com/luxwood.vn — bấm vào bong bóng Facebook sẽ mở thẳng trang này.",
+          },
+        ],
+      },
+      {
+        title: "Thanh toán QR (chuyển khoản ngân hàng)",
+        fields: [
+          {
+            key: "payment.bankBin",
+            label: "Ngân hàng nhận tiền",
+            type: "select",
+            options: [
+              { value: "", label: "— Chưa chọn (tắt thanh toán QR) —" },
+              { value: "970436", label: "Vietcombank" },
+              { value: "970415", label: "VietinBank" },
+              { value: "970418", label: "BIDV" },
+              { value: "970405", label: "Agribank" },
+              { value: "970407", label: "Techcombank" },
+              { value: "970422", label: "MB Bank" },
+              { value: "970416", label: "ACB" },
+              { value: "970432", label: "VPBank" },
+              { value: "970403", label: "Sacombank" },
+              { value: "970423", label: "TPBank" },
+              { value: "970437", label: "HDBank" },
+              { value: "970443", label: "SHB" },
+              { value: "970441", label: "VIB" },
+              { value: "970440", label: "SeABank" },
+              { value: "970448", label: "OCB" },
+              { value: "970426", label: "MSB" },
+              { value: "970431", label: "Eximbank" },
+              { value: "970429", label: "SCB" },
+              { value: "970449", label: "LienVietPostBank" },
+              { value: "970433", label: "Vietbank" },
+            ],
+            hint: "Khách sẽ chuyển khoản vào đúng ngân hàng này khi chọn thanh toán QR ở trang Thanh toán. Để trống (chọn dòng đầu) sẽ TẮT hẳn tuỳ chọn thanh toán QR bên Client, chỉ còn COD.",
+          },
+          { key: "payment.accountNo", label: "Số tài khoản", type: "text" },
+          {
+            key: "payment.accountName",
+            label: "Tên chủ tài khoản (IN HOA, không dấu)",
+            type: "text",
+            hint: "Nhập đúng như trên thẻ ngân hàng, VD: NGUYEN VAN A — viết hoa, bỏ dấu, để mã QR hiển thị đúng chuẩn ngân hàng.",
           },
         ],
       },
@@ -282,6 +361,10 @@ const TABS = [
     ],
   },
 ];
+
+// Field nào cần có nút "Tải ảnh lên" + xem trước: key chứa "image" (ảnh thường) hoặc
+// "poster" (ảnh poster của video nền).
+const isImageField = (key) => key.includes("image") || key.includes("poster");
 
 const SiteSettings = () => {
   const [values, setValues] = useState({});
@@ -455,7 +538,7 @@ const SiteSettings = () => {
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
-                ) : field.type === "text" && field.key.includes("image") ? (
+                ) : field.type === "text" && isImageField(field.key) ? (
                   <div style={{ display: "flex", gap: 8 }}>
                     <input
                       type="text"
@@ -495,7 +578,7 @@ const SiteSettings = () => {
                   />
                 )}
                 {field.hint && <span className="settings-field-hint">{field.hint}</span>}
-                {field.type === "text" && field.key.includes("image") && values[field.key] && (
+                {field.type === "text" && isImageField(field.key) && values[field.key] && (
                   <div className="settings-preview">
                     <img src={values[field.key]} alt="preview" onError={e => e.target.style.display = "none"} />
                   </div>

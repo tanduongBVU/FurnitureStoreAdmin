@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/Api";
+import ImageUploadInput from "../../components/ImageUploadInput/ImageUploadInput";
 import "./ProductForm.css";
 
-const CATEGORIES = ["Phòng khách", "Phòng ngủ", "Phòng ăn", "Phòng làm việc", "Ban công"];
+const CATEGORIES = ["Phòng khách", "Phòng ngủ", "Phòng ăn", "Phòng làm việc", "Phòng tắm", "Ban công"];
 const MATERIALS = ["Gỗ tự nhiên", "Gỗ công nghiệp", "Kim loại", "Vải nỉ", "Da/Da công nghiệp", "Mây tre đan", "Kính"];
 const COLORS = ["Nâu gỗ", "Trắng", "Đen", "Xám", "Be/Kem", "Xanh dương", "Xanh lá", "Vàng"];
 
@@ -261,13 +262,12 @@ const ProductEdit = () => {
             <h3>Hình ảnh & Cài đặt</h3>
             <div className="form-grid">
               <div className="form-group full">
-                <label htmlFor="image">URL hình ảnh</label>
-                <input
-                  id="image"
-                  name="image"
+                <label>URL hình ảnh</label>
+                <ImageUploadInput
                   value={form.image || ""}
-                  onChange={e => set("image", e.target.value)}
-                  placeholder="https://... hoặc /images/san-pham.jpg"
+                  onChange={url => set("image", url)}
+                  placeholder="https://... , /images/san-pham.jpg hoặc tải lên từ máy →"
+                  showPreview={false}
                 />
                 {form.image && (
                   <div className="img-preview">

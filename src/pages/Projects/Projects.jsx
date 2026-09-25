@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../services/Api";
+import ImageUploadInput, { MultiImageUploadButton } from "../../components/ImageUploadInput/ImageUploadInput";
 import "./Projects.css";
 
 const emptyForm = {
@@ -73,6 +74,17 @@ const Projects = () => {
   const closeForm = () => {
     setShowForm(false);
     setFormError("");
+  };
+
+  // Ảnh vừa tải lên từ máy → nối thêm vào cuối danh sách (mỗi ảnh 1 dòng mới)
+  const appendGalleryImages = (urls) => {
+    setForm((p) => {
+      const existing = p.imagesText
+        .split("\n")
+        .map((u) => u.trim())
+        .filter(Boolean);
+      return { ...p, imagesText: [...existing, ...urls].join("\n") };
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -230,11 +242,10 @@ const Projects = () => {
 
               <div className="projects-admin-field">
                 <label>URL ảnh đại diện (cover)</label>
-                <input
-                  type="text"
+                <ImageUploadInput
                   value={form.coverImage}
-                  onChange={(e) => setField("coverImage", e.target.value)}
-                  placeholder="https://..."
+                  onChange={(url) => setField("coverImage", url)}
+                  placeholder="https://... hoặc tải lên từ máy →"
                 />
               </div>
 
@@ -246,8 +257,9 @@ const Projects = () => {
                   onChange={(e) => setField("imagesText", e.target.value)}
                   placeholder={"https://anh1.jpg\nhttps://anh2.jpg\nhttps://anh3.jpg"}
                 />
+                <MultiImageUploadButton onUploaded={appendGalleryImages} />
                 <span className="projects-admin-field-hint">
-                  Dán mỗi URL ảnh trên 1 dòng riêng. Đây là các ảnh hiện trong gallery khi khách xem chi tiết dự án.
+                  Dán mỗi URL ảnh trên 1 dòng riêng, hoặc bấm nút phía trên để chọn nhiều ảnh từ máy (ảnh tải xong sẽ tự thêm vào cuối danh sách). Đây là các ảnh hiện trong gallery khi khách xem chi tiết dự án.
                 </span>
               </div>
 

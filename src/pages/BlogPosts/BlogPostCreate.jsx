@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import api from "../../services/Api";
+import ImageUploadInput from "../../components/ImageUploadInput/ImageUploadInput";
 import "../Products/ProductForm.css";
 
 const CATEGORIES = ["Mẹo trang trí", "Bảo quản gỗ", "Xu hướng nội thất", "Câu chuyện thương hiệu"];
@@ -100,12 +101,12 @@ const BlogPostCreate = () => {
             <h3>Ảnh đại diện</h3>
             <div className="form-grid">
               <div className="form-group full">
-                <label htmlFor="thumbnail">URL ảnh đại diện</label>
-                <input
-                  id="thumbnail"
+                <label>URL ảnh đại diện</label>
+                <ImageUploadInput
                   value={form.thumbnail}
-                  onChange={e => set("thumbnail", e.target.value)}
-                  placeholder="https://... hoặc /images/bai-viet.jpg"
+                  onChange={url => set("thumbnail", url)}
+                  placeholder="https://... , /images/bai-viet.jpg hoặc tải lên từ máy →"
+                  showPreview={false}
                 />
                 {form.thumbnail && (
                   <div className="img-preview">

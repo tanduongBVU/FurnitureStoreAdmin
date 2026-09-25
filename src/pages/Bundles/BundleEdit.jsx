@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/Api";
+import ImageUploadInput from "../../components/ImageUploadInput/ImageUploadInput";
 import "./BundleForm.css";
 
 const formatPrice = (n) => Number(n).toLocaleString("vi-VN") + " ₫";
@@ -146,12 +147,11 @@ const BundleEdit = () => {
                 />
               </div>
               <div className="form-group full">
-                <label htmlFor="image">URL ảnh đại diện combo (không bắt buộc)</label>
-                <input
-                  id="image"
+                <label>URL ảnh đại diện combo (không bắt buộc)</label>
+                <ImageUploadInput
                   value={form.image}
-                  onChange={e => set("image", e.target.value)}
-                  placeholder="Để trống sẽ tự dùng ảnh sản phẩm đầu tiên trong combo"
+                  onChange={url => set("image", url)}
+                  placeholder="Để trống sẽ tự dùng ảnh sản phẩm đầu tiên, hoặc tải lên từ máy →"
                 />
               </div>
               <div className="form-group">

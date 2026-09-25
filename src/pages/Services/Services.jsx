@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../services/Api";
+import ImageUploadInput from "../../components/ImageUploadInput/ImageUploadInput";
 import "./Services.css";
 
 const TYPE_LABELS = {
@@ -201,11 +202,10 @@ const Services = () => {
 
               <div className="services-admin-field">
                 <label>URL ảnh</label>
-                <input
-                  type="text"
+                <ImageUploadInput
                   value={form.image}
-                  onChange={(e) => setField("image", e.target.value)}
-                  placeholder="https://..."
+                  onChange={(url) => setField("image", url)}
+                  placeholder="https://... hoặc tải lên từ máy →"
                 />
               </div>
 
