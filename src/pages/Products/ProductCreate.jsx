@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/Api";
-import ImageUploadInput from "../../components/ImageUploadInput/ImageUploadInput";
+import ImageUploadInput, { MultiImageUploadButton } from "../../components/ImageUploadInput/ImageUploadInput";
 import "./ProductForm.css";
 
 const CATEGORIES = ["Phòng khách", "Phòng ngủ", "Phòng ăn", "Phòng làm việc", "Phòng tắm", "Ban công"];
@@ -9,9 +9,17 @@ const MATERIALS = ["Gỗ tự nhiên", "Gỗ công nghiệp", "Kim loại", "V�
 const COLORS = ["Nâu gỗ", "Trắng", "Đen", "Xám", "Be/Kem", "Xanh dương", "Xanh lá", "Vàng"];
 const EMPTY_FORM = {
   name: "", category: "Phòng khách", price: "", stock: "", description: "", image: "",
+  imagesText: "", // ảnh phụ, mỗi dòng 1 URL (tối đa 4 dòng) — nối thành chuỗi phân tách dấu phẩy khi lưu
   isBestSeller: false, discountPercent: 0,
   material: MATERIALS[0], color: COLORS[0],
 };
+const MAX_EXTRA_IMAGES = 4;
+
+// Chuỗi "mỗi dòng 1 URL" (textarea) → mảng URL, cắt tối đa 4 ảnh
+const parseImagesText = (text) =>
+  text.split("\n").map((u) => u.trim()).filter(Boolean).slice(0, MAX_EXTRA_IMAGES);
+// Mảng URL → chuỗi phân tách dấu phẩy để gửi lên Backend (giống Project.Images)
+const imagesTextToPayload = (text) => parseImagesText(text).join(",");
 
 const ProductCreate = () => {
   const [form, setForm] = useState(EMPTY_FORM);
@@ -20,6 +28,19 @@ const ProductCreate = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
+
+  // Ảnh phụ vừa tải lên từ máy → nối thêm vào cuối danh sách hiện có, cắt tối đa 4 ảnh
+  // và báo cho Admin biết nếu có ảnh bị bỏ bớt do vượt giới hạn.
+  const appendExtraImages = (urls) => {
+    setForm((p) => {
+      const existing = parseImagesText(p.imagesText);
+      const combined = [...existing, ...urls];
+      if (combined.length > MAX_EXTRA_IMAGES) {
+        alert(`Chỉ được tối đa ${MAX_EXTRA_IMAGES} ảnh phụ — đã tự động giữ lại ${MAX_EXTRA_IMAGES} ảnh đầu tiên.`);
+      }
+      return { ...p, imagesText: combined.slice(0, MAX_EXTRA_IMAGES).join("\n") };
+    });
+  };
 
   const hasVariants = variants.length > 0;
   const totalVariantStock = variants.reduce((s, v) => s + (Number(v.stock) || 0), 0);
@@ -44,6 +65,7 @@ const ProductCreate = () => {
     try {
       await api.post("/Products", {
         ...form,
+        images: imagesTextToPayload(form.imagesText),
         price: Number(form.price),
         stock: Number(form.stock),
         discountPercent: Number(form.discountPercent) || 0,
@@ -256,6 +278,30 @@ const ProductCreate = () => {
                   </div>
                 )}
               </div>
+
+              <div className="form-group full">
+                <label>Ảnh phụ (tối đa {MAX_EXTRA_IMAGES} ảnh — mỗi dòng 1 URL)</label>
+                <textarea
+                  rows={3}
+                  value={form.imagesText}
+                  onChange={e => set("imagesText", e.target.value)}
+                  placeholder={"https://anh-phu-1.jpg\nhttps://anh-phu-2.jpg"}
+                />
+                <MultiImageUploadButton onUploaded={appendExtraImages} />
+                <span className="settings-field-hint">
+                  Hiện thành cột ảnh nhỏ bên trái ảnh chính ở trang chi tiết sản phẩm, khách bấm vào để đổi ảnh chính. Dán mỗi URL 1 dòng, hoặc bấm nút trên để chọn nhiều ảnh từ máy cùng lúc.
+                </span>
+                {parseImagesText(form.imagesText).length > 0 && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                    {parseImagesText(form.imagesText).map((url, i) => (
+                      <div key={i} className="img-preview" style={{ width: 70, height: 70 }}>
+                        <img src={url} alt="" onError={e => e.target.style.display = "none"} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="form-group full">
                 <label className="checkbox-label">
                   <input

@@ -358,6 +358,17 @@ const TABS = [
           { key: "aboutpage.project6.image", label: "Dự án 6 — Căn hộ Landmark 81 T42 — URL ảnh", type: "text" },
         ],
       },
+      {
+        title: "Đối tác & Chứng nhận (logo)",
+        fields: [
+          { key: "aboutpage.partner1.image", label: "Đối tác 1 — Hafele — URL logo", type: "text" },
+          { key: "aboutpage.partner2.image", label: "Đối tác 2 — Blum — URL logo", type: "text" },
+          { key: "aboutpage.partner3.image", label: "Đối tác 3 — Hettich — URL logo", type: "text" },
+          { key: "aboutpage.partner4.image", label: "Chứng nhận 1 — FSC Certified — URL logo", type: "text" },
+          { key: "aboutpage.partner5.image", label: "Chứng nhận 2 — PEFC — URL logo", type: "text" },
+          { key: "aboutpage.partner6.image", label: "Chứng nhận 3 — ISO 9001 — URL logo", type: "text" },
+        ],
+      },
     ],
   },
 ];

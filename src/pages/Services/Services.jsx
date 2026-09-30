@@ -1,7 +1,21 @@
 import { useState, useEffect } from "react";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
 import api from "../../services/Api";
 import ImageUploadInput from "../../components/ImageUploadInput/ImageUploadInput";
 import "./Services.css";
+
+// Toolbar có "video" — Quill sẽ hỏi dán link video (VD: link nhúng YouTube) rồi tự chèn
+// khung xem trước vào bài, y hệt cách chèn ảnh.
+const QUILL_MODULES = {
+  toolbar: [
+    [{ header: [2, 3, false] }],
+    ["bold", "italic", "underline"],
+    [{ list: "ordered" }, { list: "bullet" }],
+    ["blockquote", "link", "image", "video"],
+    ["clean"],
+  ],
+};
 
 const TYPE_LABELS = {
   "thi-cong": "Dịch vụ thi công",
@@ -219,12 +233,13 @@ const Services = () => {
               </div>
 
               <div className="services-admin-field">
-                <label>Nội dung chi tiết (HTML)</label>
-                <textarea
-                  rows={6}
+                <label>Nội dung chi tiết</label>
+                <ReactQuill
+                  theme="snow"
                   value={form.content}
-                  onChange={(e) => setField("content", e.target.value)}
-                  placeholder="<p>Nội dung chi tiết...</p>"
+                  onChange={(v) => setField("content", v)}
+                  modules={QUILL_MODULES}
+                  placeholder="Viết nội dung chi tiết dịch vụ tại đây — có thể chèn ảnh và video ngay trong bài..."
                 />
               </div>
 
