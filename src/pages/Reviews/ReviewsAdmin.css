@@ -126,3 +126,88 @@
   font-weight: 600;
   color: #16a34a;
 }
+
+
+/* ══ Tab "Phân tích" + khung phản hồi AI (thêm vào CUỐI ReviewsAdmin.css) ══ */
+.reviews-toolbar { flex-wrap: wrap; }
+
+.review-btn-ai {
+  border: none; border-radius: 6px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  background: rgba(99,102,241,.12); color: #4338ca; transition: opacity .15s;
+}
+.review-btn-ai:hover { opacity: .75; }
+
+/* Phân tích theo sản phẩm */
+.insights { display: flex; flex-direction: column; gap: 14px; }
+.insights__note { margin: 0 0 4px; font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+.insight-card { background: #fff; border: 1px solid #eee2d2; border-radius: 12px; padding: 18px 20px; }
+.insight-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.insight-card__name { margin: 0 0 4px; font-size: 15px; font-weight: 700; color: var(--walnut); }
+.insight-card__avg { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--walnut); }
+.insight-card__count { font-size: 12px; color: #9a8b78; }
+.insight-card__badges { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.insight-pill { display: inline-flex; padding: 4px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.insight-pill--danger { background: rgba(239,68,68,.12); color: #b91c1c; }
+.insight-pill--good { background: rgba(34,197,94,.12); color: #16a34a; }
+.insight-pill--muted { background: rgba(122,106,88,.12); color: var(--text-muted); }
+
+.insight-dist { display: flex; flex-direction: column; gap: 5px; max-width: 420px; }
+.insight-dist__row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+.insight-dist__label { width: 22px; }
+.insight-dist__track { flex: 1; height: 7px; border-radius: 4px; background: #f1e9dc; overflow: hidden; }
+.insight-dist__fill { height: 100%; background: #c8a96e; border-radius: 4px; }
+.insight-dist__num { width: 22px; text-align: right; }
+
+.insight-ai { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.insight-ai__btn {
+  border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+  background: #4338ca; color: #fff; transition: background .15s;
+}
+.insight-ai__btn:hover:not(:disabled) { background: #3730a3; }
+.insight-ai__btn:disabled { opacity: .55; cursor: not-allowed; }
+.insight-ai__hint { font-size: 12px; color: #9a8b78; }
+.insight-ai__error { margin: 10px 0 0; font-size: 13px; color: #b91c1c; }
+
+.insight-ai__result { margin-top: 12px; background: linear-gradient(135deg, #eef2ff, #f5f3ff); border: 1px solid #c7d2fe; border-radius: 10px; padding: 14px 16px; }
+.insight-ai__summary { margin: 0 0 12px; font-size: 13.5px; line-height: 1.6; color: #312e81; }
+.insight-ai__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.insight-ai__title { margin: 0 0 6px; font-size: 12.5px; font-weight: 700; }
+.insight-ai__title--good { color: #15803d; }
+.insight-ai__title--bad { color: #b91c1c; }
+.insight-ai__cols ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; color: #312e81; }
+.insight-ai__empty { margin: 0; font-size: 12.5px; color: #6366f1; }
+.insight-ai__foot { margin: 10px 0 0; font-size: 11.5px; color: #6366f1; }
+
+/* Khung soạn phản hồi AI dưới mỗi đánh giá */
+.review-reply { margin-top: 14px; background: linear-gradient(135deg, #eef2ff, #f5f3ff); border: 1px solid #c7d2fe; border-radius: 10px; padding: 14px 16px; }
+.review-reply__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.review-reply__title { margin: 0 0 3px; font-size: 14px; font-weight: 700; color: #3730a3; }
+.review-reply__sub { margin: 0; font-size: 12.5px; color: #6366f1; line-height: 1.5; }
+.review-reply__close { background: none; border: none; font-size: 15px; color: #6366f1; cursor: pointer; padding: 2px 6px; }
+.review-reply__loading { margin: 12px 0 0; font-size: 13px; color: #6366f1; }
+.review-reply__error { margin: 10px 0 0; font-size: 13px; color: #dc2626; }
+.review-reply__warn { margin: 10px 0 0; font-size: 12.5px; color: #b45309; }
+.review-reply__success { margin: 10px 0 0; padding: 9px 12px; border-radius: 8px; background: rgba(34,197,94,.12); color: #15803d; font-size: 13px; line-height: 1.5; }
+.review-reply__label { display: block; margin: 12px 0 6px; font-size: 12.5px; color: #4338ca; }
+.review-reply__subject, .review-reply__textarea {
+  width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 10px;
+  border: 1.5px solid #c7d2fe; background: #fff; font-size: 13.5px; font-family: inherit; color: #1e293b; outline: none;
+}
+.review-reply__subject:focus, .review-reply__textarea:focus { border-color: #4338ca; }
+.review-reply__textarea { margin-top: 8px; line-height: 1.6; resize: vertical; }
+.review-reply__hint { margin: 8px 0 0; font-size: 12px; color: #6366f1; }
+.review-reply__hint code { background: rgba(99,102,241,.12); padding: 1px 5px; border-radius: 4px; font-size: 11.5px; }
+.review-reply__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.review-reply__btn {
+  padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+  border: 1.5px solid #c7d2fe; background: #fff; color: #4338ca; transition: all .15s;
+}
+.review-reply__btn:hover:not(:disabled) { border-color: #4338ca; }
+.review-reply__btn:disabled { opacity: .55; cursor: not-allowed; }
+.review-reply__btn--send { background: #16a34a; border-color: #16a34a; color: #fff; }
+.review-reply__btn--send:hover:not(:disabled) { background: #15803d; border-color: #15803d; }
+
+@media (max-width: 700px) {
+  .insight-ai__cols { grid-template-columns: 1fr; }
+}

@@ -11,8 +11,18 @@ const STATUS_BADGE = {
   "Huỷ": "badge--danger",
 };
 
+// Màu badge theo mức ưu tiên của gợi ý hành động (AI)
+const REC_BADGE = {
+  "cao": "badge--danger",
+  "trung bình": "badge--warning",
+  "thấp": "badge--muted",
+};
+
 const formatPrice = (n) => Number(n || 0).toLocaleString("vi-VN") + " ₫";
 const formatDateShort = (d) => new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+// Khoá ngày dạng yyyy-MM-dd (theo giờ máy) — khớp với trường "date" Backend trả về ở /Dashboard/anomalies
+const dateKey = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 const isSameMonth = (dateStr, ref) => {
   const d = new Date(dateStr);
@@ -39,6 +49,31 @@ const Dashboard = () => {
   // Số ngày hiển thị trong biểu đồ doanh thu — khách Admin tự chọn 7 / 14 / 30 ngày gần nhất
   const [chartRange, setChartRange] = useState(14);
 
+  // ── Nhận xét nhanh bằng AI (Gemini) — xem DashboardController.GetInsights. KHÔNG dùng AI
+  // để tính số liệu, chỉ nhờ AI đọc số liệu đã tính sẵn ở Backend rồi viết nhận xét ngắn.
+  // Gọi lại mỗi khi đổi khoảng ngày của biểu đồ (chartRange), để nhận xét luôn khớp đúng
+  // khoảng thời gian Admin đang xem trên biểu đồ.
+  const [insight, setInsight] = useState("");
+  const [insightLoading, setInsightLoading] = useState(true);
+  const [insightError, setInsightError] = useState("");
+  // Mặc định chỉ hiện 2 dòng đầu (banner gọn) — Admin bấm "Xem thêm" mới hiện trọn vẹn
+  const [insightExpanded, setInsightExpanded] = useState(false);
+
+  // ── Gợi ý hành động bằng AI — xem DashboardController.GetRecommendations.
+  // Chỉ gọi 1 lần khi mở trang, KHÔNG phụ thuộc chartRange vì gợi ý hành động không gắn
+  // với khoảng ngày đang xem ở biểu đồ.
+  const [recommendations, setRecommendations] = useState([]);
+  const [recLoading, setRecLoading] = useState(true);
+  const [recError, setRecError] = useState("");
+
+  // ── Ngày doanh thu bất thường trên biểu đồ — xem DashboardController.GetAnomalies.
+  // Backend tự phát hiện bằng code (không để AI đoán), AI chỉ viết lời giải thích.
+  // Gọi lại mỗi khi đổi chartRange để khớp đúng khoảng ngày đang xem.
+  const [anomalies, setAnomalies] = useState([]);
+  const [anomalyLoading, setAnomalyLoading] = useState(true);
+  const [anomalyError, setAnomalyError] = useState("");
+  const [selectedAnomaly, setSelectedAnomaly] = useState(null); // khoá ngày yyyy-MM-dd đang được chọn
+
   useEffect(() => {
     const fetchAll = async () => {
       try {
@@ -60,6 +95,59 @@ const Dashboard = () => {
     };
     fetchAll();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setInsightLoading(true);
+    setInsightError("");
+    setInsightExpanded(false);
+    api.get(`/Dashboard/insights?days=${chartRange}`)
+      .then(res => {
+        if (!cancelled) setInsight(res.data.summary);
+      })
+      .catch(() => {
+        if (!cancelled) setInsightError("Chưa thể lấy nhận xét từ AI lúc này — kiểm tra lại cấu hình Gemini API Key ở Backend, hoặc thử tải lại trang.");
+      })
+      .finally(() => {
+        if (!cancelled) setInsightLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [chartRange]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setRecLoading(true);
+    setRecError("");
+    api.get("/Dashboard/recommendations")
+      .then(res => {
+        if (!cancelled) setRecommendations(res.data.recommendations || []);
+      })
+      .catch(() => {
+        if (!cancelled) setRecError("Chưa thể lấy gợi ý từ AI lúc này — kiểm tra lại cấu hình Gemini API Key ở Backend, hoặc thử tải lại trang.");
+      })
+      .finally(() => {
+        if (!cancelled) setRecLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAnomalyLoading(true);
+    setAnomalyError("");
+    setSelectedAnomaly(null);
+    api.get(`/Dashboard/anomalies?days=${chartRange}`)
+      .then(res => {
+        if (!cancelled) setAnomalies(res.data.anomalies || []);
+      })
+      .catch(() => {
+        if (!cancelled) setAnomalyError("Chưa kiểm tra được điểm bất thường lúc này.");
+      })
+      .finally(() => {
+        if (!cancelled) setAnomalyLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [chartRange]);
 
   if (loading) {
     return (
@@ -239,8 +327,84 @@ const Dashboard = () => {
   // Đây là danh sách để Admin cân nhắc: cần quảng bá thêm, giảm giá, hay ngừng nhập nữa. ──
   const neverSoldProducts = activeProducts.filter(p => !soldQtyByProduct[p.id]);
 
+  // Tra nhanh ngày bất thường theo khoá yyyy-MM-dd để đánh dấu cột trên biểu đồ
+  const anomalyByDate = Object.fromEntries(anomalies.map(a => [a.date, a]));
+
   return (
     <div className="dashboard">
+
+      {/* ── Nhận xét nhanh bằng AI — đặt TRÊN CÙNG, trước cả số liệu, để Admin đọc nhận
+          định tổng quan trước khi nhìn vào từng con số. Thiết kế dạng banner GỌN: nền nhạt
+          tách biệt hẳn khỏi các dashboard-card trắng bên dưới, mặc định chỉ hiện 2 dòng kèm
+          nút "Xem thêm" thay vì chiếm nguyên 1 khối to như trước — Admin bận thì lướt qua 2
+          dòng đầu là đủ, cần đọc kỹ thì bấm mở rộng. Luôn hiện khối này kể cả khi lỗi, để
+          Admin biết tính năng tồn tại thay vì âm thầm ẩn đi khi Gemini gặp sự cố. */}
+      <div
+        style={{
+          display: "flex", gap: 12, alignItems: "flex-start",
+          background: "linear-gradient(135deg, #eef2ff, #f5f3ff)",
+          border: "1px solid #c7d2fe", borderRadius: 12,
+          padding: "14px 18px", marginBottom: 20,
+        }}
+      >
+        <span style={{ fontSize: 19, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>🤖</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 700, color: "#4338ca", textTransform: "uppercase", letterSpacing: .4 }}>
+            Nhận xét nhanh (AI)
+          </p>
+          {insightLoading ? (
+            <p style={{ margin: 0, fontSize: 13.5, color: "#6366f1" }}>Đang phân tích số liệu...</p>
+          ) : insightError ? (
+            <p style={{ margin: 0, fontSize: 13.5, color: "#dc2626" }}>{insightError}</p>
+          ) : (
+            <>
+              <p
+                style={{
+                  margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "#312e81",
+                  display: insightExpanded ? "block" : "-webkit-box",
+                  WebkitLineClamp: insightExpanded ? "unset" : 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: insightExpanded ? "visible" : "hidden",
+                }}
+              >
+                {insight}
+              </p>
+              <button
+                onClick={() => setInsightExpanded((e) => !e)}
+                style={{
+                  marginTop: 4, background: "none", border: "none", padding: 0,
+                  fontSize: 12, fontWeight: 600, color: "#4338ca", cursor: "pointer",
+                }}
+              >
+                {insightExpanded ? "Thu gọn ▲" : "Xem thêm ▼"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Gợi ý hành động bằng AI — Admin nên làm gì ngay, kèm mức ưu tiên.
+          Rỗng thì vẫn hiện thông báo thay vì ẩn card, để Admin biết tính năng tồn tại. */}
+      <div className="dashboard-card">
+        <div className="dashboard-card__header"><h2>💡 Gợi ý hành động (AI)</h2></div>
+        {recLoading ? (
+          <p className="empty-note">Đang phân tích số liệu...</p>
+        ) : recError ? (
+          <p className="empty-note" style={{ color: "#dc2626" }}>{recError}</p>
+        ) : recommendations.length === 0 ? (
+          <p className="empty-note">Hiện chưa có gợi ý hành động nào.</p>
+        ) : (
+          recommendations.map((r, i) => (
+            <div className="rec-item" key={i}>
+              <span className={`badge ${REC_BADGE[r.priority] || "badge--info"}`}>{r.priority}</span>
+              <div className="rec-item__body">
+                <strong>{r.title}</strong>
+                {r.detail && <p>{r.detail}</p>}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
 
       {/* Stats */}
       <div className="stats-grid">
@@ -280,13 +444,20 @@ const Dashboard = () => {
           <div className="revenue-chart">
             {chartData.map((d, i) => {
               const heightPct = Math.max(2, (d.total / maxChartValue) * 100);
+              const key = dateKey(d.date);
+              const anomaly = anomalyByDate[key];
               return (
-                <div className="revenue-bar-col" key={i}>
+                <div
+                  className={`revenue-bar-col ${anomaly ? "revenue-bar-col--clickable" : ""}`}
+                  key={i}
+                  onClick={anomaly ? () => setSelectedAnomaly(selectedAnomaly === key ? null : key) : undefined}
+                >
+                  {anomaly && <span className="revenue-bar-flag" title="Ngày doanh thu bất thường — bấm để xem giải thích">⚠</span>}
                   <div className="revenue-bar-track">
                     <div
-                      className="revenue-bar"
+                      className={`revenue-bar ${anomaly ? "revenue-bar--anomaly" : ""} ${selectedAnomaly === key ? "revenue-bar--selected" : ""}`}
                       style={{ height: `${heightPct}%` }}
-                      title={`${formatDateShort(d.date)}: ${formatPrice(d.total)}`}
+                      title={`${formatDateShort(d.date)}: ${formatPrice(d.total)}${anomaly ? " (bất thường)" : ""}`}
                     />
                   </div>
                   {/* Ẩn bớt nhãn ngày khi hiện 30 cột để tránh chữ chồng lên nhau — chỉ hiện
@@ -298,6 +469,34 @@ const Dashboard = () => {
               );
             })}
           </div>
+        )}
+
+        {/* ── Ghi chú điểm bất thường dưới biểu đồ — phát hiện bằng code, AI chỉ giải thích.
+            Luôn hiện 1 dòng trạng thái để Admin biết tính năng tồn tại. ── */}
+        {hasChartData && (
+          anomalyLoading ? (
+            <p className="anomaly-status">🔎 Đang kiểm tra điểm bất thường...</p>
+          ) : anomalyError ? (
+            <p className="anomaly-status">{anomalyError}</p>
+          ) : anomalies.length === 0 ? (
+            <p className="anomaly-status">✅ Không phát hiện ngày nào có doanh thu bất thường trong {chartRange} ngày qua.</p>
+          ) : (
+            <div className="anomaly-list">
+              {anomalies.map((a) => (
+                <div
+                  key={a.date}
+                  className={`anomaly-item ${selectedAnomaly === a.date ? "anomaly-item--selected" : ""}`}
+                  onClick={() => setSelectedAnomaly(selectedAnomaly === a.date ? null : a.date)}
+                >
+                  <p className="anomaly-item__title">
+                    ⚠ Ngày {formatDateShort(a.date + "T00:00:00")} — {formatPrice(a.total)}
+                    <span className="anomaly-item__ratio">gấp {a.ratio} lần mức thường</span>
+                  </p>
+                  <p className="anomaly-item__text">{a.explanation}</p>
+                </div>
+              ))}
+            </div>
+          )
         )}
       </div>
 

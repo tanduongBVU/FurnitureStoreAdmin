@@ -15,6 +15,16 @@ const TEXT = "#1e2333";
 const TEXT_MUTED = "#8a93a6";
 const BORDER = "#e2e6f0";
 
+// Câu hỏi gợi ý nhanh — chỉ hiện khi cuộc trò chuyện CHƯA có câu hỏi nào (mới mở widget,
+// chỉ thấy đúng 1 lời chào mặc định), bấm vào là gửi luôn, đỡ phải gõ tay với vài câu hỏi
+// thường gặp nhất. Sau khi Admin đã hỏi 1 câu, ẩn đi để nhường chỗ cho lịch sử trò chuyện.
+const QUICK_QUESTIONS = [
+  "Sản phẩm nào đang bán chậm nhất?",
+  "Có đơn hàng nào cần xử lý gấp không?",
+  "Tháng này so với tháng trước thế nào?",
+  "Có liên hệ nào chưa trả lời không?",
+];
+
 // Gemini đôi khi vẫn lỡ chèn markdown (**đậm**) dù đã dặn trong system prompt — hàm này
 // tách chuỗi theo cặp ** và render phần ở giữa thành <strong>, thay vì để lộ dấu ** thừa
 // ra màn hình. Đây là lớp phòng hờ, không thay thế việc dặn AI ở Backend.
@@ -44,9 +54,9 @@ export default function AdminChatWidget() {
     }
   }, [messages, loading, open]);
 
-  const handleSend = async (e) => {
-    e.preventDefault();
-    const text = input.trim();
+  // Tách riêng phần GỬI đi khỏi phần ĐỌC Ô INPUT — để cả form nhập tay (handleSend) lẫn các
+  // nút gợi ý nhanh (handleQuickQuestion) đều dùng chung đúng 1 luồng gửi/nhận.
+  const sendMessage = async (text) => {
     if (!text || loading) return;
 
     setMessages((prev) => [...prev, { role: "user", text }]);
@@ -63,6 +73,16 @@ export default function AdminChatWidget() {
       setLoading(false);
     }
   };
+
+  const handleSend = (e) => {
+    e.preventDefault();
+    sendMessage(input.trim());
+  };
+
+  const handleQuickQuestion = (q) => sendMessage(q);
+
+  // Chỉ còn đúng 1 tin nhắn (lời chào mặc định) nghĩa là Admin CHƯA hỏi gì — hiện gợi ý.
+  const showQuickQuestions = messages.length <= 1;
 
   return (
     <>
@@ -136,6 +156,33 @@ export default function AdminChatWidget() {
               </div>
             )}
           </div>
+
+          {/* Gợi ý câu hỏi nhanh — chỉ hiện khi chưa hỏi gì, biến mất sau câu hỏi đầu tiên để
+              nhường chỗ cho khung tin nhắn. */}
+          {showQuickQuestions && (
+            <div
+              style={{
+                display: "flex", flexWrap: "wrap", gap: 6,
+                padding: "10px 16px", borderTop: `1px solid ${BORDER}`, background: "#fff",
+              }}
+            >
+              {QUICK_QUESTIONS.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => handleQuickQuestion(q)}
+                  disabled={loading}
+                  style={{
+                    padding: "6px 11px", borderRadius: 20, border: `1px solid ${BORDER}`,
+                    background: BLUE_LIGHT, color: NAVY, fontSize: 12,
+                    cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1,
+                  }}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Input */}
           <form onSubmit={handleSend} style={{ display: "flex", gap: 8, padding: 12, borderTop: `1px solid ${BORDER}`, background: "#fff" }}>

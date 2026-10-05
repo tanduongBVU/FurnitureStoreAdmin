@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import api from "../../services/Api";
+import ReviewInsights from "./ReviewInsights";
+import ReviewReplyDraft from "./ReviewReplyDraft";
 import "./ReviewsAdmin.css";
 
 const ReviewsAdmin = () => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState("pending"); // "pending" | "approved" | "all"
+  const [tab, setTab] = useState("pending"); // "pending" | "approved" | "all" | "insights"
+  const [replyOpenId, setReplyOpenId] = useState(null); // review đang mở khung soạn phản hồi AI
 
   const fetchReviews = async () => {
     try {
@@ -38,6 +41,7 @@ const ReviewsAdmin = () => {
     try {
       await api.delete(`/Reviews/${review.id}`);
       setReviews(prev => prev.filter(r => r.id !== review.id));
+      if (replyOpenId === review.id) setReplyOpenId(null);
     } catch {
       alert("Lỗi khi xoá đánh giá!");
     }
@@ -76,54 +80,83 @@ const ReviewsAdmin = () => {
         >
           Tất cả <span className="reviews-tab-count">{reviews.length}</span>
         </button>
+        <button
+          className={`reviews-tab ${tab === "insights" ? "reviews-tab--active" : ""}`}
+          onClick={() => setTab("insights")}
+        >
+          ✨ Phân tích
+        </button>
       </div>
 
-      {error && (
-        <div className="reviews-error-box">
-          ⚠️ {error}
-          <div style={{ marginTop: 10 }}>
-            <button className="reviews-tab" onClick={fetchReviews}>Thử lại</button>
-          </div>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="reviews-loading-box"><div className="reviews-spinner" /><p>Đang tải đánh giá...</p></div>
-      ) : !error && filtered.length === 0 ? (
-        <div className="reviews-empty">
-          {tab === "pending" ? "Không có đánh giá nào đang chờ duyệt." : "Không có đánh giá nào ở mục này."}
-        </div>
-      ) : !error && (
-        <div className="reviews-list">
-          {filtered.map(r => (
-            <div className={`review-card ${!r.isApproved ? "review-card--pending" : ""}`} key={r.id}>
-              <div className="review-card__head">
-                <div>
-                  <span className="review-card__product">{r.productName}</span>
-                  <div className="review-card__meta">
-                    <span className="review-card__name">{r.userName}</span>
-                    <span className="review-stars">{starsOf(r.rating)}</span>
-                    <span className="review-card__date">{formatDate(r.createdAt)}</span>
-                  </div>
-                </div>
-                {r.isApproved && <span className="review-badge-approved">✓ Đã duyệt</span>}
-              </div>
-
-              {r.comment && <p className="review-card__comment">{r.comment}</p>}
-
-              <div className="review-card__actions">
-                {!r.isApproved && (
-                  <button className="review-btn-approve" onClick={() => handleApprove(r.id)}>
-                    ✓ Duyệt
-                  </button>
-                )}
-                <button className="review-btn-reject" onClick={() => handleReject(r)}>
-                  {r.isApproved ? "🗑️ Gỡ" : "✕ Từ chối"}
-                </button>
+      {tab === "insights" ? (
+        <ReviewInsights />
+      ) : (
+        <>
+          {error && (
+            <div className="reviews-error-box">
+              ⚠️ {error}
+              <div style={{ marginTop: 10 }}>
+                <button className="reviews-tab" onClick={fetchReviews}>Thử lại</button>
               </div>
             </div>
-          ))}
-        </div>
+          )}
+
+          {loading ? (
+            <div className="reviews-loading-box"><div className="reviews-spinner" /><p>Đang tải đánh giá...</p></div>
+          ) : !error && filtered.length === 0 ? (
+            <div className="reviews-empty">
+              {tab === "pending" ? "Không có đánh giá nào đang chờ duyệt." : "Không có đánh giá nào ở mục này."}
+            </div>
+          ) : !error && (
+            <div className="reviews-list">
+              {filtered.map(r => (
+                <div className={`review-card ${!r.isApproved ? "review-card--pending" : ""}`} key={r.id}>
+                  <div className="review-card__head">
+                    <div>
+                      <span className="review-card__product">{r.productName}</span>
+                      <div className="review-card__meta">
+                        <span className="review-card__name">{r.userName}</span>
+                        <span className="review-stars">{starsOf(r.rating)}</span>
+                        <span className="review-card__date">{formatDate(r.createdAt)}</span>
+                      </div>
+                    </div>
+                    {r.isApproved && <span className="review-badge-approved">✓ Đã duyệt</span>}
+                  </div>
+
+                  {r.comment && <p className="review-card__comment">{r.comment}</p>}
+
+                  <div className="review-card__actions">
+                    {!r.isApproved && (
+                      <button className="review-btn-approve" onClick={() => handleApprove(r.id)}>
+                        ✓ Duyệt
+                      </button>
+                    )}
+                    {r.rating <= 3 && (
+                      <button
+                        className="review-btn-ai"
+                        onClick={() => setReplyOpenId(replyOpenId === r.id ? null : r.id)}
+                      >
+                        ✨ {replyOpenId === r.id ? "Đóng phản hồi" : "Soạn phản hồi"}
+                      </button>
+                    )}
+                    <button className="review-btn-reject" onClick={() => handleReject(r)}>
+                      {r.isApproved ? "🗑️ Gỡ" : "✕ Từ chối"}
+                    </button>
+                  </div>
+
+                  {replyOpenId === r.id && (
+                    <ReviewReplyDraft
+                      key={r.id}
+                      reviewId={r.id}
+                      productName={r.productName}
+                      onClose={() => setReplyOpenId(null)}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

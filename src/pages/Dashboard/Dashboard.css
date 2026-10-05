@@ -28,6 +28,7 @@
 .badge--warning { background: rgba(245,158,11,.12); color: #d97706; }
 .badge--info    { background: rgba(79,114,227,.12); color: var(--accent); }
 .badge--danger  { background: rgba(239,68,68,.12);  color: var(--danger); }
+.badge--muted   { background: rgba(100,116,139,.12); color: var(--text-muted); }
 
 .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .quick-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text); gap: 12px; }
@@ -186,6 +187,13 @@
   font-size: 11px;
 }
 
+/* ── Gợi ý hành động (AI) ── */
+.rec-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.rec-item:last-child { border-bottom: none; }
+.rec-item .badge { flex-shrink: 0; margin-top: 2px; min-width: 76px; justify-content: center; }
+.rec-item__body strong { font-size: 13.5px; color: var(--text); }
+.rec-item__body p { margin: 3px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--text-muted); }
+
 /* ── Trạng thái loading / lỗi / rỗng ── */
 .dashboard-loading, .dashboard-error {
   background: var(--white);
@@ -218,3 +226,25 @@
   .quick-grid { grid-template-columns: 1fr; }
   .revenue-bar-label { display: none; }
 }
+
+/* ── Điểm bất thường trên biểu đồ doanh thu ── */
+.revenue-bar-col--clickable { cursor: pointer; }
+.revenue-bar-flag { font-size: 11px; line-height: 1; color: #d97706; margin-bottom: -2px; }
+.revenue-bar--anomaly { background: linear-gradient(180deg, #f59e0b, #d97706); }
+.revenue-bar--selected { outline: 2px solid #d97706; outline-offset: 1px; opacity: 1; }
+
+.anomaly-status { margin: 14px 0 0; font-size: 12.5px; color: var(--text-muted); }
+.anomaly-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.anomaly-item {
+  background: rgba(245,158,11,.08);
+  border: 1px solid rgba(245,158,11,.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.anomaly-item:hover { background: rgba(245,158,11,.14); }
+.anomaly-item--selected { background: rgba(245,158,11,.18); border-color: #d97706; }
+.anomaly-item__title { margin: 0 0 3px; font-size: 13px; font-weight: 700; color: var(--text); }
+.anomaly-item__ratio { margin-left: 8px; font-size: 11px; font-weight: 600; color: #d97706; }
+.anomaly-item__text { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--text); }

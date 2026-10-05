@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/Api";
+import AiReplyDraft from "../../components/AiReplyDraft/AiReplyDraft";
 import "./ContactDetail.css";
 
 const STATUS_LIST = ["Mới", "Đang xử lý", "Đã xử lý"];
@@ -31,6 +32,13 @@ const ContactDetail = () => {
       setError("Lỗi khi cập nhật liên hệ!");
       setSaving(false);
     }
+  };
+
+  // Sau khi gửi email thành công: Backend đã lưu trạng thái "Đã xử lý" và ghi 1 dòng lịch sử vào ghi chú.
+  // Ở đây chỉ NỐI dòng lịch sử vào ô ghi chú đang hiển thị (không đè) để không mất phần nhân viên gõ dở.
+  const handleReplySent = (r) => {
+    setStatus(r.status);
+    setNote(prev => (prev ? prev + "\n\n" + r.logLine : r.logLine));
   };
 
   if (loading) return (
@@ -66,6 +74,11 @@ const ContactDetail = () => {
         <div className="message-box">
           <h3>Nội dung liên hệ</h3>
           <p>{contact.message}</p>
+        </div>
+
+        {/* Soạn bản nháp trả lời bằng AI — chỉ soạn nháp, nhân viên tự chỉnh sửa và gửi */}
+        <div style={{ margin: "20px 0" }}>
+          <AiReplyDraft contactId={contact.id} email={contact.email} onSent={handleReplySent} />
         </div>
 
         <div className="status-block">
