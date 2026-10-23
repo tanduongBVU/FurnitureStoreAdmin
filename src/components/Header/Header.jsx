@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import api from "../../services/Api";
+import useAdminUser from "../../hooks/useAdminUser";
 import "./Header.css";
 
 const titles = {
@@ -9,12 +10,13 @@ const titles = {
   "/orders":    "Quản lý Đơn hàng",
   "/contacts":  "Quản lý Liên hệ",
   "/users":     "Quản lý Người dùng",
+  "/profile":   "Thông tin cá nhân",
 };
 
 // Các link tắt hay dùng nhất trong menu cài đặt (bánh răng) — trỏ đúng theo
 // route đã khai báo trong Sidebar.jsx.
 const SETTINGS_SHORTCUTS = [
-  { path: "/settings", icon: "🎨", label: "Giao diện Client", adminOnly: true },
+  { path: "/settings", icon: "🎨", label: "Giao diện Client" },
   { path: "/coupons",  icon: "🎟️", label: "Mã giảm giá" },
   { path: "/users",    icon: "👥", label: "Người dùng", adminOnly: true },
 ];
@@ -38,8 +40,7 @@ const Header = () => {
   const title = titles[pathname] || "Admin";
   const today = new Date().toLocaleDateString("vi-VN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
-  const userStr = localStorage.getItem("adminUser");
-  const currentUser = userStr ? JSON.parse(userStr) : null;
+  const currentUser = useAdminUser();
   const role = currentUser?.role || "";
   const name = currentUser?.name || "Admin";
   const getInitial = (n) => n.trim().charAt(0).toUpperCase() || "A";
@@ -184,8 +185,12 @@ const Header = () => {
 
         {/* ── AVATAR ── */}
         <div style={{ position: "relative" }}>
-          <div className="header-avatar" onClick={() => toggleMenu("avatar")} style={{ cursor: "pointer" }}>
-            {getInitial(name)}
+          <div className="header-avatar" onClick={() => toggleMenu("avatar")} style={{ cursor: "pointer", overflow: "hidden" }}>
+            {currentUser?.avatarUrl ? (
+              <img src={currentUser.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ) : (
+              getInitial(name)
+            )}
           </div>
           {openMenu === "avatar" && (
             <div style={{ ...dropdownStyle, right: 0, minWidth: 200 }}>
@@ -193,6 +198,13 @@ const Header = () => {
                 <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: "#3b2a1a" }}>{name}</p>
                 <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "#9a8a76" }}>{role || "Quản trị viên"}</p>
               </div>
+              <Link
+                to="/profile"
+                onClick={() => setOpenMenu(null)}
+                style={dropdownItemStyle}
+              >
+                👤 Thông tin cá nhân
+              </Link>
               <button
                 onClick={handleLogout}
                 style={{ ...dropdownItemStyle, width: "100%", textAlign: "left", border: "none", background: "none", cursor: "pointer", color: "#b91c1c" }}

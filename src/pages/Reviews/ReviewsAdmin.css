@@ -211,3 +211,52 @@
 @media (max-width: 700px) {
   .insight-ai__cols { grid-template-columns: 1fr; }
 }
+
+/* ── Thêm vào CUỐI file ReviewsAdmin.css ──
+   Chỉ gồm các class mới của bước Duyệt / Gỡ. Nếu file CSS của cậu đã còn các class
+   review-status, review-btn-approve, review-btn-delete, reviews-flash thì bỏ qua đoạn trùng. */
+
+.review-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  align-self: flex-start;
+}
+.review-status--pending  { background: #fff4d6; color: #8a6100; }
+.review-status--approved { background: #e3f4e6; color: #1f6b34; }
+
+.review-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.review-btn-approve,
+.review-btn-delete {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.review-btn-approve { background: #2e7d4f; color: #fff; }
+.review-btn-delete  { background: #fff; color: #c0392b; border-color: #e3b4ae; }
+.review-btn-approve:hover:not(:disabled),
+.review-btn-delete:hover:not(:disabled) { filter: brightness(0.95); }
+.review-btn-approve:disabled,
+.review-btn-delete:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.reviews-flash {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13.5px;
+}
+.reviews-flash--success { background: #e3f4e6; color: #1f6b34; }
+.reviews-flash--error   { background: #fde8e6; color: #a8322a; }

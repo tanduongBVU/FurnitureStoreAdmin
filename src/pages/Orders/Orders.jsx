@@ -21,6 +21,9 @@ const PAGE_SIZE = 6;
 const PAYMENT_PAID = "Đã thanh toán";
 const PAYMENT_UNPAID = "Chưa thanh toán";
 const isPaid = (o) => o.paymentStatus === PAYMENT_PAID;
+// Nút "Đã nhận tiền" CHỈ dành cho đơn COD (thu tiền tận tay). Đơn QR do khách tự bấm
+// "Tôi đã chuyển khoản" ở bước thanh toán nên không cần Admin xác nhận.
+const isCod = (o) => (o.paymentMethod || "COD") === "COD";
 
 // Bỏ dấu tiếng Việt + khoảng trắng — dùng để tạo TÊN FILE an toàn, tránh vài hệ điều hành
 // cũ hoặc phần mềm xử lý file bị lỗi với ký tự có dấu trong tên file.
@@ -169,18 +172,23 @@ const Orders = () => {
 
   useEffect(() => { fetchOrders(); }, []);
 
-  // Xác nhận ngay trên danh sách: đã nhận được tiền của đơn này (QR/chuyển khoản, hoặc COD
-  // sau khi giao xong). Gọi PATCH /Orders/{id}/payment-status rồi cập nhật thẳng dòng đó
-  // trong state, không cần tải lại cả danh sách.
+  // Xác nhận ngay trên danh sách: đã thu được tiền của đơn COD (sau khi giao hàng). Gọi
+  // PATCH /Orders/{id}/payment-status — Backend tự chuyển đơn sang "Hoàn thành" (trừ đơn đã huỷ) —
+  // rồi cập nhật thẳng dòng đó trong state (cả cột Thanh toán lẫn Trạng thái + số thống kê ở đầu trang),
+  // không cần tải lại cả danh sách.
   const handleConfirmPayment = async (order) => {
-    if (!window.confirm(`Xác nhận đã nhận đủ tiền của đơn #${order.id}?`)) return;
+    if (!window.confirm(`Xác nhận đã nhận đủ tiền của đơn #${order.id}? Đơn sẽ tự chuyển sang "Hoàn thành".`)) return;
     setConfirmingId(order.id);
     setError("");
     try {
       await api.patch(`/Orders/${order.id}/payment-status`, JSON.stringify(PAYMENT_PAID), {
         headers: { "Content-Type": "application/json" },
       });
-      setOrders(prev => prev.map(o => (o.id === order.id ? { ...o, paymentStatus: PAYMENT_PAID } : o)));
+      setOrders(prev => prev.map(o => (
+        o.id === order.id
+          ? { ...o, paymentStatus: PAYMENT_PAID, status: o.status === "Huỷ" ? o.status : "Hoàn thành" }
+          : o
+      )));
     } catch {
       setError(`Không thể xác nhận thanh toán cho đơn #${order.id}. Kiểm tra lại backend.`);
     } finally {
@@ -380,8 +388,8 @@ const Orders = () => {
                       <td><span className={`badge ${STATUS_CLASS[o.status]}`}>{o.status}</span></td>
                       <td>
                         <button className="btn-view" onClick={() => navigate(`/orders/${o.id}`)}>👁️ Chi tiết</button>
-                        {/* Chỉ hiện với đơn chưa thanh toán và chưa bị huỷ */}
-                        {!paid && o.status !== "Huỷ" && (
+                        {/* Chỉ hiện với đơn COD chưa thanh toán và chưa bị huỷ (đơn QR do khách tự xác nhận) */}
+                        {isCod(o) && !paid && o.status !== "Huỷ" && (
                           <button
                             onClick={() => handleConfirmPayment(o)}
                             disabled={confirmingId === o.id}

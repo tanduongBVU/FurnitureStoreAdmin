@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/Api";
 import ImageUploadInput, { MultiImageUploadButton } from "../../components/ImageUploadInput/ImageUploadInput";
+import RichTextEditor, { isRichTextEmpty } from "../../components/RichTextEditor/RichTextEditor";
+import FieldError from "../../components/FieldError/FieldError";
+import useFormValidation from "../../hooks/useFormValidation";
+import { required, number, integer, positive, minValue, maxValue, minLength, maxLength, imagePath, imageList } from "../../utils/validators";
 import "./ProductForm.css";
 
 const CATEGORIES = ["Phòng khách", "Phòng ngủ", "Phòng ăn", "Phòng làm việc", "Phòng tắm", "Ban công"];
@@ -9,11 +13,54 @@ const MATERIALS = ["Gỗ tự nhiên", "Gỗ công nghiệp", "Kim loại", "V�
 const COLORS = ["Nâu gỗ", "Trắng", "Đen", "Xám", "Be/Kem", "Xanh dương", "Xanh lá", "Vàng"];
 const EMPTY_FORM = {
   name: "", category: "Phòng khách", price: "", stock: "", description: "", image: "",
+  detailContent: "", // "Thông tin chi tiết" — HTML từ trình soạn thảo (chữ, bảng, ảnh, link...)
   imagesText: "", // ảnh phụ, mỗi dòng 1 URL (tối đa 4 dòng) — nối thành chuỗi phân tách dấu phẩy khi lưu
   isBestSeller: false, discountPercent: 0,
   material: MATERIALS[0], color: COLORS[0],
 };
 const MAX_EXTRA_IMAGES = 4;
+
+// Luật kiểm tra từng ô — lỗi hiện chữ đỏ ngay dưới ô nhập
+const RULES = {
+  name: [
+    required("Vui lòng nhập tên sản phẩm."),
+    minLength(2, "Tên sản phẩm cần ít nhất 2 ký tự."),
+    maxLength(200, "Tên sản phẩm tối đa 200 ký tự."),
+  ],
+  price: [
+    required("Vui lòng nhập giá."),
+    number("Giá phải là một con số."),
+    positive("Giá phải lớn hơn 0."),
+  ],
+  stock: [
+    required("Vui lòng nhập tồn kho."),
+    integer("Tồn kho phải là số nguyên."),
+    minValue(0, "Tồn kho không được âm."),
+  ],
+  discountPercent: [
+    number("Giảm giá phải là một con số."),
+    minValue(0, "Giảm giá không được âm."),
+    maxValue(100, "Giảm giá tối đa 100%."),
+  ],
+  description: [maxLength(5000, "Mô tả tối đa 5000 ký tự.")],
+  image: [imagePath()],
+  imagesText: [imageList()],
+};
+
+// Kiểm tra từng dòng biến thể → mảng thông báo lỗi (chuỗi rỗng = dòng hợp lệ)
+const validateVariants = (list) =>
+  list.map((v, i) => {
+    const msgs = [];
+    if (String(v.price).trim() === "" || !(Number(v.price) > 0)) msgs.push("giá phải lớn hơn 0");
+    if (String(v.stock).trim() === "") msgs.push("vui lòng nhập tồn kho");
+    else if (!Number.isInteger(Number(v.stock)) || Number(v.stock) < 0) msgs.push("tồn kho phải là số nguyên không âm");
+    if (list.findIndex((o) => o.material === v.material && o.color === v.color) !== i)
+      msgs.push("trùng chất liệu + màu với một biến thể phía trên");
+    return msgs.length ? `Biến thể ${i + 1}: ${msgs.join("; ")}.` : "";
+  });
+const variantPriceBad = (v) => !(Number(v.price) > 0);
+const variantStockBad = (v) =>
+  String(v.stock).trim() === "" || !Number.isInteger(Number(v.stock)) || Number(v.stock) < 0;
 
 // Chuỗi "mỗi dòng 1 URL" (textarea) → mảng URL, cắt tối đa 4 ảnh
 const parseImagesText = (text) =>
@@ -24,10 +71,17 @@ const imagesTextToPayload = (text) => parseImagesText(text).join(",");
 const ProductCreate = () => {
   const [form, setForm] = useState(EMPTY_FORM);
   const [variants, setVariants] = useState([]); // [{ material, color, price, stock }]
+  const [variantErrors, setVariantErrors] = useState([]); // thông báo lỗi theo từng dòng biến thể
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
+  const { errors, validateField, validateAll, clearError } = useFormValidation(RULES);
+
+  // Gõ lại thì xoá lỗi của chính ô đó
+  const set = (f, v) => {
+    setForm(p => ({ ...p, [f]: v }));
+    clearError(f);
+  };
 
   // Ảnh phụ vừa tải lên từ máy → nối thêm vào cuối danh sách hiện có, cắt tối đa 4 ảnh
   // và báo cho Admin biết nếu có ảnh bị bỏ bớt do vượt giới hạn.
@@ -40,6 +94,7 @@ const ProductCreate = () => {
       }
       return { ...p, imagesText: combined.slice(0, MAX_EXTRA_IMAGES).join("\n") };
     });
+    clearError("imagesText");
   };
 
   const hasVariants = variants.length > 0;
@@ -48,13 +103,23 @@ const ProductCreate = () => {
   const stockExceeded = hasVariants && totalVariantStock > baseStock;
 
   const addVariantRow = () => setVariants(prev => [...prev, { material: MATERIALS[0], color: COLORS[0], price: "", stock: "" }]);
-  const removeVariantRow = (idx) => setVariants(prev => prev.filter((_, i) => i !== idx));
-  const setVariantField = (idx, field, value) =>
+  const removeVariantRow = (idx) => {
+    setVariants(prev => prev.filter((_, i) => i !== idx));
+    setVariantErrors([]); // chỉ số dòng bị lệch sau khi xoá → xoá hết thông báo cũ, bấm lưu sẽ kiểm tra lại
+  };
+  const setVariantField = (idx, field, value) => {
     setVariants(prev => prev.map((v, i) => (i === idx ? { ...v, [field]: value } : v)));
+    setVariantErrors(prev => prev.map((m, i) => (i === idx ? "" : m)));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    const fieldsOk = validateAll(form);
+    const vErrs = validateVariants(variants);
+    setVariantErrors(vErrs);
+    if (!fieldsOk || vErrs.some(Boolean)) return;
 
     if (stockExceeded) {
       setError(`Tổng tồn kho các biến thể (${totalVariantStock}) không được vượt quá tồn kho tổng (${baseStock}).`);
@@ -65,7 +130,10 @@ const ProductCreate = () => {
     try {
       await api.post("/Products", {
         ...form,
+        name: form.name.trim(),
         images: imagesTextToPayload(form.imagesText),
+        // Trình soạn thảo để trống vẫn trả "<p><br></p>" → quy về chuỗi rỗng khi không có nội dung thật
+        detailContent: isRichTextEmpty(form.detailContent) ? "" : form.detailContent,
         price: Number(form.price),
         stock: Number(form.stock),
         discountPercent: Number(form.discountPercent) || 0,
@@ -98,7 +166,7 @@ const ProductCreate = () => {
       {error && <div className="form-error">⚠️ {error}</div>}
 
       <div className="form-card">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
 
           <div className="form-section">
             <h3>Thông tin cơ bản</h3>
@@ -108,11 +176,13 @@ const ProductCreate = () => {
                 <input
                   id="name"
                   name="name"
+                  className={errors.name ? "is-invalid" : ""}
                   value={form.name}
                   onChange={e => set("name", e.target.value)}
+                  onBlur={() => validateField("name", form)}
                   placeholder="VD: Sofa Bắc Âu Oslo"
-                  required
                 />
+                <FieldError message={errors.name} />
               </div>
               <div className="form-group">
                 <label htmlFor="category">Danh mục *</label>
@@ -146,11 +216,13 @@ const ProductCreate = () => {
                   id="price"
                   name="price"
                   type="number"
+                  className={errors.price ? "is-invalid" : ""}
                   value={form.price}
                   onChange={e => set("price", e.target.value)}
+                  onBlur={() => validateField("price", form)}
                   placeholder="VD: 18500000"
-                  required
                 />
+                <FieldError message={errors.price} />
                 {hasVariants && (
                   <span className="settings-field-hint">
                     Sản phẩm đang có biến thể — giá này KHÔNG dùng để bán, Client hiện giá của từng biến thể bên dưới.
@@ -163,11 +235,13 @@ const ProductCreate = () => {
                   id="stock"
                   name="stock"
                   type="number"
+                  className={errors.stock ? "is-invalid" : ""}
                   value={form.stock}
                   onChange={e => set("stock", e.target.value)}
+                  onBlur={() => validateField("stock", form)}
                   placeholder="VD: 10"
-                  required
                 />
+                <FieldError message={errors.stock} />
                 {hasVariants && (
                   <span className={`settings-field-hint ${stockExceeded ? "hint-error" : ""}`}>
                     Tổng tồn kho các biến thể: {totalVariantStock} / {baseStock || 0}
@@ -181,12 +255,28 @@ const ProductCreate = () => {
                   id="description"
                   name="description"
                   rows={4}
+                  className={errors.description ? "is-invalid" : ""}
                   value={form.description}
                   onChange={e => set("description", e.target.value)}
+                  onBlur={() => validateField("description", form)}
                   placeholder="Mô tả chi tiết về sản phẩm..."
                 />
+                <FieldError message={errors.description} />
               </div>
             </div>
+          </div>
+
+          <div className="form-section">
+            <h3>Thông tin chi tiết (không bắt buộc)</h3>
+            <p className="settings-field-hint" style={{ marginBottom: 10 }}>
+              Hiện thành mục "Thông tin chi tiết" ở trang sản phẩm — có thể chèn chữ định dạng, bảng thông số, ảnh, link.
+              Để trống nếu không cần, mục này sẽ không hiện.
+            </p>
+            <RichTextEditor
+              value={form.detailContent}
+              onChange={(html) => set("detailContent", html)}
+              placeholder="VD: bảng thông số kỹ thuật, kích thước, hướng dẫn bảo quản, ảnh chi tiết..."
+            />
           </div>
 
           <div className="form-section">
@@ -212,27 +302,32 @@ const ProductCreate = () => {
                   <span></span>
                 </div>
                 {variants.map((v, idx) => (
-                  <div className="variant-row" key={idx}>
-                    <select value={v.material} onChange={e => setVariantField(idx, "material", e.target.value)}>
-                      {MATERIALS.map(m => <option key={m}>{m}</option>)}
-                    </select>
-                    <select value={v.color} onChange={e => setVariantField(idx, "color", e.target.value)}>
-                      {COLORS.map(c => <option key={c}>{c}</option>)}
-                    </select>
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={v.price}
-                      onChange={e => setVariantField(idx, "price", e.target.value)}
-                    />
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={v.stock}
-                      onChange={e => setVariantField(idx, "stock", e.target.value)}
-                    />
-                    <button type="button" className="variant-row__remove" onClick={() => removeVariantRow(idx)}>✕</button>
-                  </div>
+                  <Fragment key={idx}>
+                    <div className="variant-row">
+                      <select value={v.material} onChange={e => setVariantField(idx, "material", e.target.value)}>
+                        {MATERIALS.map(m => <option key={m}>{m}</option>)}
+                      </select>
+                      <select value={v.color} onChange={e => setVariantField(idx, "color", e.target.value)}>
+                        {COLORS.map(c => <option key={c}>{c}</option>)}
+                      </select>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        className={variantErrors[idx] && variantPriceBad(v) ? "is-invalid" : ""}
+                        value={v.price}
+                        onChange={e => setVariantField(idx, "price", e.target.value)}
+                      />
+                      <input
+                        type="number"
+                        placeholder="0"
+                        className={variantErrors[idx] && variantStockBad(v) ? "is-invalid" : ""}
+                        value={v.stock}
+                        onChange={e => setVariantField(idx, "stock", e.target.value)}
+                      />
+                      <button type="button" className="variant-row__remove" onClick={() => removeVariantRow(idx)}>✕</button>
+                    </div>
+                    <FieldError message={variantErrors[idx]} />
+                  </Fragment>
                 ))}
               </div>
             )}
@@ -249,13 +344,16 @@ const ProductCreate = () => {
                   type="number"
                   min={0}
                   max={100}
+                  className={errors.discountPercent ? "is-invalid" : ""}
                   value={form.discountPercent}
                   onChange={e => {
                     const v = Number(e.target.value);
                     if (v >= 0 && v <= 100) set("discountPercent", e.target.value);
                   }}
+                  onBlur={() => validateField("discountPercent", form)}
                   placeholder="0 = không giảm giá"
                 />
+                <FieldError message={errors.discountPercent} />
                 <span className="settings-field-hint">Áp dụng cho MỌI biến thể (nếu có), tính trên giá của từng biến thể.</span>
               </div>
             </div>
@@ -272,6 +370,7 @@ const ProductCreate = () => {
                   placeholder="https://... , /images/san-pham.jpg hoặc tải lên từ máy →"
                   showPreview={false}
                 />
+                <FieldError message={errors.image} />
                 {form.image && (
                   <div className="img-preview">
                     <img src={form.image} alt="preview" onError={e => e.target.style.display = "none"} />
@@ -283,10 +382,14 @@ const ProductCreate = () => {
                 <label>Ảnh phụ (tối đa {MAX_EXTRA_IMAGES} ảnh — mỗi dòng 1 URL)</label>
                 <textarea
                   rows={3}
+                  name="imagesText"
+                  className={errors.imagesText ? "is-invalid" : ""}
                   value={form.imagesText}
                   onChange={e => set("imagesText", e.target.value)}
+                  onBlur={() => validateField("imagesText", form)}
                   placeholder={"https://anh-phu-1.jpg\nhttps://anh-phu-2.jpg"}
                 />
+                <FieldError message={errors.imagesText} />
                 <MultiImageUploadButton onUploaded={appendExtraImages} />
                 <span className="settings-field-hint">
                   Hiện thành cột ảnh nhỏ bên trái ảnh chính ở trang chi tiết sản phẩm, khách bấm vào để đổi ảnh chính. Dán mỗi URL 1 dòng, hoặc bấm nút trên để chọn nhiều ảnh từ máy cùng lúc.

@@ -1,0 +1,102 @@
+/* Khung popup dùng chung (Sản phẩm, Combo, Cẩm nang...) — số đo khớp cửa sổ "Thêm dịch vụ mới" ở trang Dịch vụ:
+   nền mờ, thẻ trắng bo 14px, rộng tối đa 820px, padding 32px, tiêu đề 18px, nút Huỷ/Lưu 13px.
+   Mọi class đều có tiền tố "lx-" để KHÔNG trùng với CSS có sẵn của trang quản trị (class ".modal" trần dễ trùng
+   với trang khác, khi trùng thì CSS nạp sau thắng — đã làm popup bị thu hẹp còn khoảng 560px). Khác trang Dịch vụ
+   một điểm có chủ ý: phần nội dung cuộn riêng còn hàng nút luôn nằm dưới đáy, để form dài không phải cuộn hết mới thấy nút Lưu. */
+.lx-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000; /* trên thanh bên (100) và header (50) */
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.lx-modal {
+  width: 100%;
+  max-height: 90vh;
+  background: #fff;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.lx-modal.lx-modal--sm { max-width: 440px; }
+.lx-modal.lx-modal--md { max-width: 820px; }
+.lx-modal.lx-modal--lg { max-width: 980px; }
+
+.lx-modal-header { padding: 32px 32px 0; flex-shrink: 0; }
+.lx-modal-header h2 { font-size: 18px; color: var(--text, #1e293b); margin: 0 0 20px; }
+
+.lx-modal-body { padding: 0 32px 8px; overflow-y: auto; flex: 1; min-height: 0; }
+
+.lx-modal-footer {
+  padding: 8px 32px 32px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.lx-modal-btn {
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.lx-modal-btn:disabled { opacity: .6; cursor: not-allowed; }
+.lx-modal-btn--ghost { background: #fff; border-color: var(--border, #e2e8f0); color: var(--text, #1e293b); font-weight: 500; padding: 9px 16px; }
+.lx-modal-btn--ghost:hover:not(:disabled) { background: var(--bg, #f1f5f9); }
+.lx-modal-btn--primary { background: var(--accent, #4f72e3); color: #fff; }
+.lx-modal-btn--primary:hover:not(:disabled) { background: var(--accent-h, #3f61cf); }
+.lx-modal-btn--danger { background: #dc2626; color: #fff; }
+.lx-modal-btn--danger:hover:not(:disabled) { opacity: .9; }
+
+/* Các mục trong form (Thông tin cơ bản, Biến thể, ...): bỏ khoảng đệm hai bên và đường kẻ do CSS khác của trang
+   quản trị thêm vào class ".form-section" trùng tên — để nội dung tràn đủ chiều rộng popup như form Dịch vụ. */
+.lx-modal .form-section {
+  padding: 0;
+  margin: 0 0 24px;
+  border: none;
+  background: none;
+  box-shadow: none;
+}
+
+/* Ô nhập trong popup: cùng cỡ chữ/khoảng cách với form của trang Dịch vụ (nhãn 12px, ô 13px) */
+.lx-modal .form-group label { font-size: 12px; font-weight: 600; color: var(--text, #1e293b); }
+.lx-modal .form-group input,
+.lx-modal .form-group select,
+.lx-modal .form-group textarea {
+  padding: 9px 12px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.lx-modal .form-group input:focus,
+.lx-modal .form-group select:focus,
+.lx-modal .form-group textarea:focus { border-color: var(--accent, #4f72e3); }
+.lx-modal .checkbox-label input[type="checkbox"] { padding: 0; }
+.lx-modal .form-error {
+  background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;
+  padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;
+}
+
+/* Hộp xác nhận (Ẩn / Xoá...) */
+.lx-confirm-message { margin: 0 0 4px; font-size: 14px; line-height: 1.6; color: var(--text, #1e293b); }
+.lx-confirm-note { margin: 8px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted, #64748b); }
+.lx-confirm-error {
+  margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 13px;
+  background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;
+}
+
+@media (max-width: 640px) {
+  .lx-modal-header { padding: 22px 18px 0; }
+  .lx-modal-body { padding: 0 18px 6px; }
+  .lx-modal-footer { padding: 8px 18px 22px; }
+}

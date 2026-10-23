@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../../services/Api";
+import FieldError from "../../components/FieldError/FieldError";
+import { required, email, phoneVN, maxLength, imagePath, url, custom } from "../../utils/validators";
 import "./SiteSettings.css";
 
 const TABS = [
@@ -377,6 +379,190 @@ const TABS = [
 // "poster" (ảnh poster của video nền).
 const isImageField = (key) => key.includes("image") || key.includes("poster");
 
+// ══════════════════════════════════════════════════════════════
+// KIỂM TRA DỮ LIỆU NHẬP — theo LOẠI Ô thay vì từng ô riêng lẻ (trang có hàng trăm ô khai báo sẵn)
+// ══════════════════════════════════════════════════════════════
+
+const FIELD_BY_KEY = {};
+TABS.forEach((tab) => tab.groups.forEach((g) => g.fields.forEach((f) => { FIELD_BY_KEY[f.key] = f; })));
+
+const isEmptyVal = (v) => v === undefined || v === null || String(v).trim() === "";
+
+const LINK_MSG = "Đường dẫn không hợp lệ — bắt đầu bằng / (VD: /sale) hoặc http://, https://.";
+
+// Mã màu dạng #RGB hoặc #RRGGBB
+const hexColor = custom((v) =>
+  isEmptyVal(v) || /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(v).trim())
+    ? ""
+    : "Mã màu không hợp lệ (dạng #RRGGBB, ví dụ #3b2a1a)."
+);
+
+// Số liên hệ của cửa hàng: di động/bàn Việt Nam (có thể có +84, dấu cách, chấm, gạch) hoặc tổng đài 1800/1900
+const hotline = custom((v) => {
+  if (isEmptyVal(v)) return "";
+  const c = String(v).replace(/[\s.\-()]/g, "");
+  return /^(\+?84|0)\d{8,10}$/.test(c) || /^1[89]00\d{4,6}$/.test(c)
+    ? ""
+    : "Số điện thoại không hợp lệ (VD: 0909 123 456 hoặc 1900 1234).";
+});
+
+const facebookUrl = custom((v) => {
+  if (isEmptyVal(v)) return "";
+  try {
+    const h = new URL(String(v).trim()).hostname.toLowerCase();
+    return /(^|\.)(facebook\.com|fb\.com|fb\.me|messenger\.com)$/.test(h)
+      ? ""
+      : "Đây không phải link Facebook (VD: https://facebook.com/luxwood.vn).";
+  } catch {
+    return "";
+  }
+});
+
+const accountNoRule = custom((v) =>
+  isEmptyVal(v) || /^\d{6,19}$/.test(String(v).trim()) ? "" : "Số tài khoản chỉ gồm 6–19 chữ số, không có dấu cách."
+);
+
+const accountNameRule = custom((v) =>
+  isEmptyVal(v) || /^[A-Z ]{2,60}$/.test(String(v).trim())
+    ? ""
+    : "Tên chủ tài khoản phải IN HOA, không dấu (VD: NGUYEN VAN A)."
+);
+
+const yearRule = custom((v) => {
+  if (isEmptyVal(v)) return "";
+  const s = String(v).trim();
+  const maxYear = new Date().getFullYear();
+  return /^\d{4}$/.test(s) && Number(s) >= 1900 && Number(s) <= maxYear
+    ? ""
+    : `Năm thành lập phải gồm 4 chữ số, từ 1900 đến ${maxYear}.`;
+});
+
+// Các luật áp dụng cho 1 ô, có xét cả giá trị các ô khác (ví dụ: bật banner thì bắt buộc có nội dung)
+const rulesFor = (field, values) => {
+  const k = field.key;
+  const val = (key) => values[key];
+  const isOn = (key) => String(val(key) ?? "") === "true";
+  const bankChosen = !isEmptyVal(val("payment.bankBin"));
+
+  // Ô chọn màu: khối theme.* bắt buộc (nếu xoá trống sẽ làm hỏng giao diện Client), các màu khác cho phép trống
+  if (field.type === "color") {
+    return k.startsWith("theme.") ? [required("Vui lòng chọn hoặc nhập mã màu."), hexColor] : [hexColor];
+  }
+
+  // Ô chọn trong danh sách: luôn hợp lệ, trừ ngân hàng khi đã nhập số tài khoản mà chưa chọn ngân hàng
+  if (field.type === "select") {
+    if (k === "payment.bankBin") {
+      return [custom((v) =>
+        isEmptyVal(v) && !isEmptyVal(val("payment.accountNo"))
+          ? "Đã nhập số tài khoản — hãy chọn ngân hàng nhận tiền."
+          : ""
+      )];
+    }
+    return [];
+  }
+
+  const rules = [];
+  if (field.type === "textarea") rules.push(maxLength(2000, "Tối đa 2000 ký tự."));
+  else if (isImageField(k)) rules.push(imagePath("Đường dẫn ảnh không hợp lệ (bắt đầu bằng http://, https:// hoặc /)."));
+  else rules.push(maxLength(300, "Tối đa 300 ký tự."));
+
+  switch (k) {
+    case "promo.banner.text":
+      if (isOn("promo.banner.enabled")) rules.push(required("Banner đang bật — hãy nhập nội dung banner."));
+      break;
+    case "promo.banner.linkText":
+      if (!isEmptyVal(val("promo.banner.linkUrl"))) rules.push(required("Đã có đường dẫn — hãy nhập chữ cho nút bấm."));
+      break;
+    case "promo.banner.linkUrl":
+    case "homeBanner.linkUrl":
+    case "homeBanner.sideLeft.linkUrl":
+    case "homeBanner.sideRight.linkUrl":
+      rules.push(imagePath(LINK_MSG));
+      break;
+    case "homeBanner.image":
+      if (isOn("homeBanner.enabled")) rules.push(required("Banner ngang đang bật — hãy nhập URL ảnh."));
+      break;
+    case "homeBanner.sideLeft.image":
+    case "homeBanner.sideRight.image":
+      if (
+        isOn("homeBanner.showSides") &&
+        isEmptyVal(val("homeBanner.sideLeft.image")) &&
+        isEmptyVal(val("homeBanner.sideRight.image"))
+      ) {
+        rules.push(required("Banner dọc đang bật — hãy nhập ít nhất một ảnh (trái hoặc phải)."));
+      }
+      break;
+    case "hero.video.url":
+      rules.push(imagePath("Đường dẫn video không hợp lệ (bắt đầu bằng http://, https:// hoặc /)."));
+      if ((val("hero.mode") || "slides") === "video") rules.push(required("Đã chọn kiểu Video — hãy nhập URL video nền."));
+      break;
+    case "hero.slide1.title":
+    case "hero.slide2.title":
+    case "hero.slide3.title":
+      rules.push(required("Vui lòng nhập tiêu đề cho slide."));
+      break;
+    case "footer.address":
+      rules.push(required("Vui lòng nhập địa chỉ."));
+      break;
+    case "footer.phone":
+      rules.push(required("Vui lòng nhập số điện thoại."), hotline);
+      break;
+    case "footer.email":
+      rules.push(required("Vui lòng nhập email."), email());
+      break;
+    case "social.zaloPhone":
+      rules.push(phoneVN("Số Zalo không hợp lệ (số di động 10 số, VD: 0909123456)."));
+      break;
+    case "social.facebookUrl":
+      rules.push(url("Link Facebook không hợp lệ (phải bắt đầu bằng http:// hoặc https://)."), facebookUrl);
+      break;
+    case "payment.accountNo":
+      rules.push(accountNoRule);
+      if (bankChosen) rules.push(required("Đã chọn ngân hàng — hãy nhập số tài khoản."));
+      break;
+    case "payment.accountName":
+      rules.push(accountNameRule);
+      if (bankChosen) rules.push(required("Đã chọn ngân hàng — hãy nhập tên chủ tài khoản."));
+      break;
+    case "aboutpage.company.year":
+      rules.push(yearRule);
+      break;
+    default:
+      if (k.endsWith("Number")) rules.push(maxLength(20, "Số liệu tối đa 20 ký tự."));
+      else if (k.endsWith("Label")) rules.push(maxLength(60, "Nhãn tối đa 60 ký tự."));
+  }
+  return rules;
+};
+
+// Kiểm tra TOÀN BỘ các ô đang áp dụng (bỏ qua nhóm đang ẩn theo showIf) → { key: thông báo lỗi }
+const computeErrors = (values) => {
+  const errs = {};
+  TABS.forEach((tab) =>
+    tab.groups.forEach((group) => {
+      if (group.showIf && !group.showIf(values)) return;
+      group.fields.forEach((field) => {
+        for (const rule of rulesFor(field, values)) {
+          const msg = rule(values[field.key], values);
+          if (msg) {
+            errs[field.key] = msg;
+            break;
+          }
+        }
+      });
+    })
+  );
+  return errs;
+};
+
+// Ô lỗi đầu tiên theo đúng thứ tự tab → nhóm → ô
+const findFirstError = (errs) => {
+  for (const tab of TABS)
+    for (const group of tab.groups)
+      for (const field of group.fields)
+        if (errs[field.key]) return { key: field.key, tabId: tab.id };
+  return null;
+};
+
 const SiteSettings = () => {
   const [values, setValues] = useState({});
   const [loading, setLoading] = useState(true);
@@ -387,6 +573,9 @@ const SiteSettings = () => {
   // Tên field (key) đang tải ảnh lên — dùng để disable đúng 1 nút "Tải ảnh lên"
   // đang chạy, các field khác vẫn dùng được bình thường trong lúc chờ.
   const [uploadingKey, setUploadingKey] = useState(null);
+  // Lỗi từng ô: { "footer.phone": "Số điện thoại không hợp lệ..." }
+  const [errors, setErrors] = useState({});
+  const [triedSave, setTriedSave] = useState(false); // đã từng bấm Lưu → mới hiện dòng tổng hợp lỗi
 
   const fetchSettings = async () => {
     try {
@@ -406,6 +595,28 @@ const SiteSettings = () => {
   const set = (key, v) => {
     setValues(p => ({ ...p, [key]: v }));
     setSaved(false);
+    // Gõ lại thì xoá lỗi của chính ô đó. Đổi ô chọn (công tắc bật/tắt, kiểu banner...) có thể đổi điều kiện
+    // của nhiều ô khác nên xoá hết lỗi cũ — sẽ kiểm tra lại khi bấm Lưu.
+    setErrors(prev => {
+      if (FIELD_BY_KEY[key]?.type === "select") return {};
+      if (!prev[key] && key !== "payment.accountNo") return prev;
+      const next = { ...prev };
+      delete next[key];
+      if (key === "payment.accountNo") delete next["payment.bankBin"];
+      return next;
+    });
+  };
+
+  // Kiểm tra 1 ô khi người dùng rời khỏi ô đó
+  const validateOne = (key) => {
+    const field = FIELD_BY_KEY[key];
+    if (!field) return;
+    let msg = "";
+    for (const rule of rulesFor(field, values)) {
+      msg = rule(values[key], values);
+      if (msg) break;
+    }
+    setErrors(prev => ({ ...prev, [key]: msg }));
   };
 
   // Upload ảnh thật từ máy — gọi endpoint mới /Upload ở Backend, nhận về URL rồi
@@ -443,10 +654,34 @@ const SiteSettings = () => {
   };
 
   const handleSave = async () => {
-    setSaving(true);
     setError("");
+    setTriedSave(true);
+
+    // Kiểm tra TOÀN BỘ các tab trước khi lưu; có lỗi thì nhảy sang tab/ô lỗi đầu tiên
+    const errs = computeErrors(values);
+    setErrors(errs);
+    const first = findFirstError(errs);
+    if (first) {
+      setActiveTab(first.tabId);
+      setTimeout(() => {
+        const el = document.querySelector(`[name="${first.key}"]`);
+        if (el) {
+          if (el.scrollIntoView) el.scrollIntoView({ block: "center", behavior: "smooth" });
+          if (el.focus) el.focus({ preventScroll: true });
+        }
+      }, 60);
+      return;
+    }
+
+    // Lưu bản đã bỏ khoảng trắng thừa ở 2 đầu mỗi giá trị
+    const payload = Object.fromEntries(
+      Object.entries(values).map(([k, v]) => [k, typeof v === "string" ? v.trim() : v])
+    );
+
+    setSaving(true);
     try {
-      await api.put("/Settings", values);
+      await api.put("/Settings", payload);
+      setValues(payload);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {
@@ -462,6 +697,8 @@ const SiteSettings = () => {
     try {
       const res = await api.post("/Settings/reset");
       setValues(res.data);
+      setErrors({});
+      setTriedSave(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {
@@ -479,6 +716,18 @@ const SiteSettings = () => {
 
   const currentTab = TABS.find(t => t.id === activeTab) ?? TABS[0];
 
+  // Số ô lỗi theo từng tab — hiện chấm đỏ trên nút tab để biết tab nào cần sửa
+  const errorCountByTab = {};
+  TABS.forEach(tab => {
+    errorCountByTab[tab.id] = tab.groups.reduce(
+      (n, g) => n + g.fields.filter(f => errors[f.key]).length, 0
+    );
+  });
+  const errorTotal = Object.values(errorCountByTab).reduce((a, b) => a + b, 0);
+  const errorTabsText = TABS.filter(t => errorCountByTab[t.id] > 0)
+    .map(t => `${t.label}: ${errorCountByTab[t.id]}`)
+    .join(" · ");
+
   return (
     <div className="settings-page">
       <div className="settings-header">
@@ -495,6 +744,11 @@ const SiteSettings = () => {
       </div>
 
       {error && <div className="form-error">⚠️ {error}</div>}
+      {triedSave && errorTotal > 0 && (
+        <div className="form-error">
+          ⚠️ Có {errorTotal} ô chưa hợp lệ ({errorTabsText}) — vui lòng sửa các ô viền đỏ rồi lưu lại.
+        </div>
+      )}
       {saved && <div className="form-success">✓ Đã lưu thành công! Tải lại trang Client để xem thay đổi.</div>}
 
       <div className="settings-tabs">
@@ -505,6 +759,18 @@ const SiteSettings = () => {
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}
+            {errorCountByTab[tab.id] > 0 && (
+              <span
+                style={{
+                  marginLeft: 6, minWidth: 18, height: 18, padding: "0 5px",
+                  borderRadius: 9, background: "#dc2626", color: "#fff",
+                  fontSize: 11, fontWeight: 700,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                {errorCountByTab[tab.id]}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -515,7 +781,10 @@ const SiteSettings = () => {
         <div className="settings-card" key={group.title}>
           <h3>{group.title}</h3>
           <div className="settings-grid">
-            {group.fields.map(field => (
+            {group.fields.map(field => {
+              const err = errors[field.key];
+              const invalid = err ? "is-invalid" : "";
+              return (
               <div
                 key={field.key}
                 className={`settings-field ${field.type === "textarea" ? "full" : ""} ${field.type === "color" ? "color-field" : ""}`}
@@ -524,24 +793,32 @@ const SiteSettings = () => {
                 {field.type === "textarea" ? (
                   <textarea
                     rows={2}
+                    name={field.key}
+                    className={invalid}
                     value={values[field.key] || ""}
                     onChange={e => set(field.key, e.target.value)}
+                    onBlur={() => validateOne(field.key)}
                   />
                 ) : field.type === "color" ? (
                   <div className="color-input-row">
                     <input
                       type="color"
-                      value={values[field.key] || "#000000"}
+                      value={/^#[0-9a-fA-F]{6}$/.test(values[field.key] || "") ? values[field.key] : "#000000"}
                       onChange={e => set(field.key, e.target.value)}
                     />
                     <input
                       type="text"
+                      name={field.key}
+                      className={invalid}
                       value={values[field.key] || ""}
                       onChange={e => set(field.key, e.target.value)}
+                      onBlur={() => validateOne(field.key)}
                     />
                   </div>
                 ) : field.type === "select" ? (
                   <select
+                    name={field.key}
+                    className={invalid}
                     value={values[field.key] || field.options[0].value}
                     onChange={e => set(field.key, e.target.value)}
                   >
@@ -553,9 +830,12 @@ const SiteSettings = () => {
                   <div style={{ display: "flex", gap: 8 }}>
                     <input
                       type="text"
+                      name={field.key}
+                      className={invalid}
                       placeholder="Dán URL ảnh, hoặc tải lên từ máy →"
                       value={values[field.key] || ""}
                       onChange={e => set(field.key, e.target.value)}
+                      onBlur={() => validateOne(field.key)}
                       style={{ flex: 1 }}
                     />
                     <label
@@ -584,10 +864,14 @@ const SiteSettings = () => {
                 ) : (
                   <input
                     type="text"
+                    name={field.key}
+                    className={invalid}
                     value={values[field.key] || ""}
                     onChange={e => set(field.key, e.target.value)}
+                    onBlur={() => validateOne(field.key)}
                   />
                 )}
+                <FieldError message={err} />
                 {field.hint && <span className="settings-field-hint">{field.hint}</span>}
                 {field.type === "text" && isImageField(field.key) && values[field.key] && (
                   <div className="settings-preview">
@@ -595,7 +879,8 @@ const SiteSettings = () => {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ))}

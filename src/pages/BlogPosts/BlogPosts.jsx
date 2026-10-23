@@ -1,23 +1,23 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import api from "../../services/Api";
+import ConfirmDialog from "../../components/Modal/ConfirmDialog";
+import BlogPostFormModal from "./BlogPostFormModal";
 import "../Products/Products.css";
 
 const CATEGORIES = ["Tất cả", "Mẹo trang trí", "Bảo quản gỗ", "Xu hướng nội thất", "Câu chuyện thương hiệu"];
 const PAGE_SIZE = 6;
 
 const BlogPosts = () => {
-  const navigate = useNavigate();
-  const userStr = localStorage.getItem("adminUser");
-  const currentUser = userStr ? JSON.parse(userStr) : null;
-  const isAdmin = currentUser?.role === "Admin";
-
   const [posts, setPosts]     = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState("");
   const [search, setSearch]   = useState("");
   const [category, setCategory] = useState("Tất cả");
   const [page, setPage]       = useState(1);
+  // Popup Viết bài / Sửa: id = null → bài mới, có id → sửa bài đó
+  const [formModal, setFormModal] = useState({ open: false, id: null });
+  // Hộp xác nhận: kind = "toggle" (Ẩn/Đăng) hoặc "delete" (Xoá hẳn)
+  const [confirm, setConfirm] = useState({ kind: null, post: null, busy: false, error: "" });
 
   const fetchPosts = async () => {
     try {
@@ -35,25 +35,32 @@ const BlogPosts = () => {
 
   useEffect(() => { fetchPosts(); }, []);
 
-  const handleTogglePublish = async (post) => {
-    const actionText = post.isPublished ? "chuyển về nháp (ẩn khỏi Client)" : "xuất bản (hiện công khai)";
-    if (!window.confirm(`Bạn có chắc muốn ${actionText} bài viết "${post.title}" không?`)) return;
+  const closeConfirm = () => setConfirm({ kind: null, post: null, busy: false, error: "" });
+
+  const doConfirm = async () => {
+    const { kind, post } = confirm;
+    if (!post) return;
+    setConfirm(c => ({ ...c, busy: true, error: "" }));
     try {
-      await api.put(`/BlogPosts/${post.id}`, { ...post, isPublished: !post.isPublished });
+      if (kind === "delete") {
+        await api.delete(`/BlogPosts/${post.id}`);
+      } else {
+        await api.put(`/BlogPosts/${post.id}`, { ...post, isPublished: !post.isPublished });
+      }
+      closeConfirm();
       await fetchPosts();
     } catch {
-      alert("Lỗi khi cập nhật trạng thái bài viết!");
+      setConfirm(c => ({
+        ...c,
+        busy: false,
+        error: kind === "delete" ? "Lỗi khi xoá bài viết!" : "Lỗi khi cập nhật trạng thái bài viết!",
+      }));
     }
   };
 
-  const handleDelete = async (post) => {
-    if (!window.confirm(`Xoá HẲN bài viết "${post.title}"? Hành động này không thể hoàn tác.`)) return;
-    try {
-      await api.delete(`/BlogPosts/${post.id}`);
-      await fetchPosts();
-    } catch {
-      alert("Lỗi khi xoá bài viết!");
-    }
+  const handleSaved = () => {
+    setFormModal({ open: false, id: null });
+    fetchPosts();
   };
 
   const filtered = posts.filter(p => {
@@ -64,6 +71,33 @@ const BlogPosts = () => {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const formatDate = (d) => new Date(d).toLocaleDateString("vi-VN");
+
+  // Nội dung hộp xác nhận theo loại thao tác
+  const cPost = confirm.post;
+  const isDelete = confirm.kind === "delete";
+  const confirmProps = isDelete
+    ? {
+        title: "Xoá bài viết",
+        message: `Xoá HẲN bài viết "${cPost?.title ?? ""}"?`,
+        note: "Hành động này không thể hoàn tác.",
+        confirmLabel: "Xoá hẳn",
+        danger: true,
+      }
+    : cPost?.isPublished
+      ? {
+          title: "Chuyển bài về nháp",
+          message: `Bạn có chắc muốn chuyển bài viết "${cPost?.title ?? ""}" về nháp (ẩn khỏi Client) không?`,
+          note: "Bài viết vẫn được giữ lại, có thể đăng lại bất cứ lúc nào.",
+          confirmLabel: "Chuyển về nháp",
+          danger: true,
+        }
+      : {
+          title: "Xuất bản bài viết",
+          message: `Bạn có chắc muốn xuất bản (hiện công khai) bài viết "${cPost?.title ?? ""}" không?`,
+          note: "",
+          confirmLabel: "Xuất bản",
+          danger: false,
+        };
 
   return (
     <div className="products-page">
@@ -87,7 +121,7 @@ const BlogPosts = () => {
             ))}
           </div>
         </div>
-        <button className="btn-add" onClick={() => navigate("/blogposts/create")}>
+        <button className="btn-add" onClick={() => setFormModal({ open: true, id: null })}>
           + Viết bài mới
         </button>
       </div>
@@ -149,16 +183,17 @@ const BlogPosts = () => {
                       </td>
                       <td>
                         <div className="action-btns">
-                          <button className="btn-edit" onClick={() => navigate(`/blogposts/edit/${p.id}`)}>✏️ Sửa</button>
+                          <button className="btn-edit" onClick={() => setFormModal({ open: true, id: p.id })}>✏️ Sửa</button>
                           <button
                             className={p.isPublished ? "btn-del" : "btn-restore"}
-                            onClick={() => handleTogglePublish(p)}
+                            onClick={() => setConfirm({ kind: "toggle", post: p, busy: false, error: "" })}
                           >
                             {p.isPublished ? "🙈 Ẩn" : "📢 Đăng"}
                           </button>
-                          {isAdmin && (
-                            <button className="btn-del" onClick={() => handleDelete(p)}>🗑️ Xoá</button>
-                          )}
+                          <button
+                            className="btn-del"
+                            onClick={() => setConfirm({ kind: "delete", post: p, busy: false, error: "" })}
+                          >🗑️ Xoá</button>
                         </div>
                       </td>
                     </tr>
@@ -180,6 +215,26 @@ const BlogPosts = () => {
           </div>
         </>
       )}
+
+      {/* Popup Viết bài / Sửa bài viết — mount lại mỗi lần mở (key) để form luôn sạch */}
+      {formModal.open && (
+        <BlogPostFormModal
+          key={formModal.id ?? "new"}
+          postId={formModal.id}
+          onClose={() => setFormModal({ open: false, id: null })}
+          onSaved={handleSaved}
+        />
+      )}
+
+      {/* Xác nhận Ẩn/Đăng hoặc Xoá hẳn bài viết */}
+      <ConfirmDialog
+        open={!!confirm.post}
+        {...confirmProps}
+        busy={confirm.busy}
+        error={confirm.error}
+        onConfirm={doConfirm}
+        onCancel={closeConfirm}
+      />
     </div>
   );
 };

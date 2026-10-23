@@ -1,4 +1,5 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+import useAdminUser from "../../hooks/useAdminUser";
 import "./Sidebar.css";
 
 const navItems = [
@@ -6,34 +7,23 @@ const navItems = [
   { path: "/products",   icon: "🪑", label: "Sản phẩm" },
   { path: "/bundles",    icon: "🎁", label: "Combo" },
   { path: "/services",   icon: "🛠️", label: "Dịch vụ" },
-  { path: "/projects",   icon: "🏛️", label: "Dự án" },
   { path: "/blogposts",  icon: "📝", label: "Cẩm nang" },
   { path: "/reviews",    icon: "⭐", label: "Đánh giá" },
   { path: "/orders",     icon: "📦", label: "Đơn hàng" },
   { path: "/contacts",   icon: "✉️",  label: "Liên hệ" },
-  { path: "/newsletter", icon: "📧", label: "Nhận tin" },
   { path: "/coupons",    icon: "🎟️", label: "Mã giảm giá" },
   { path: "/users",      icon: "👥", label: "Người dùng", adminOnly: true },
-  { path: "/settings",   icon: "🎨", label: "Giao diện", adminOnly: true },
+  { path: "/settings",   icon: "🎨", label: "Giao diện" },
 ];
 
+// Thanh bên CHỈ còn logo + menu quản lý. Tên, ảnh đại diện, "Thông tin cá nhân" và "Đăng xuất"
+// nằm ở menu avatar góc trên bên phải (components/Header) — trước đây khối người dùng + nút
+// Đăng xuất bị lặp ở cả 2 nơi.
 const Sidebar = () => {
-  const navigate = useNavigate();
-
-  const userStr = localStorage.getItem("adminUser");
-  const currentUser = userStr ? JSON.parse(userStr) : null;
+  const currentUser = useAdminUser();
   const role = currentUser?.role || "";
-  const name = currentUser?.name || "Admin";
 
   const visibleItems = navItems.filter(item => !item.adminOnly || role === "Admin");
-
-  const getInitial = (n) => n.trim().charAt(0).toUpperCase() || "A";
-
-  const handleLogout = () => {
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminUser");
-    navigate("/login");
-  };
 
   return (
     <aside className="sidebar">
@@ -62,20 +52,6 @@ const Sidebar = () => {
           </NavLink>
         ))}
       </nav>
-
-      {/* Bottom */}
-      <div className="sidebar__bottom">
-        <div className="sidebar__admin-info">
-          <div className="sidebar__avatar">{getInitial(name)}</div>
-          <div>
-            <p className="sidebar__admin-name">{name}</p>
-            <p className="sidebar__admin-role">{role || "Quản trị viên"}</p>
-          </div>
-        </div>
-        <button className="sidebar__logout" onClick={handleLogout}>
-          🚪 Đăng xuất
-        </button>
-      </div>
     </aside>
   );
 };

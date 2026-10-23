@@ -10,6 +10,8 @@ const STATUS_LIST = ["Chờ xác nhận", "Đang xử lý", "Đang giao", "Hoàn
 const PAYMENT_PAID = "Đã thanh toán";
 const PAYMENT_UNPAID = "Chưa thanh toán";
 
+const money = (n) => Number(n || 0).toLocaleString("vi-VN", { maximumFractionDigits: 0 }) + " ₫";
+
 const OrderDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -43,14 +45,17 @@ const OrderDetail = () => {
   // Xác nhận đã nhận tiền — có hiệu lực NGAY khi bấm (độc lập với nút "Lưu trạng thái"
   // bên dưới), và Admin ở lại trang này để xem kết quả thay vì bị đưa về danh sách.
   const handleConfirmPayment = async () => {
-    if (!window.confirm(`Xác nhận đã nhận đủ tiền của đơn #${order.id}?`)) return;
+    if (!window.confirm(`Xác nhận đã nhận đủ tiền của đơn #${order.id}? Đơn sẽ tự chuyển sang "Hoàn thành".`)) return;
     setConfirmingPayment(true);
     setError("");
     try {
       await api.patch(`/Orders/${id}/payment-status`, JSON.stringify(PAYMENT_PAID), {
         headers: { "Content-Type": "application/json" }
       });
-      setOrder(prev => ({ ...prev, paymentStatus: PAYMENT_PAID }));
+      // Backend tự chuyển đơn sang "Hoàn thành" (trừ đơn đã huỷ) — cập nhật giao diện cho khớp
+      const newStatus = order.status === "Huỷ" ? order.status : "Hoàn thành";
+      setOrder(prev => ({ ...prev, paymentStatus: PAYMENT_PAID, status: newStatus }));
+      setStatus(newStatus);
     } catch {
       setError("Lỗi khi xác nhận thanh toán!");
     } finally {
@@ -72,6 +77,14 @@ const OrderDetail = () => {
   );
 
   const paid = order.paymentStatus === PAYMENT_PAID;
+  // "Xác nhận đã nhận tiền" chỉ dành cho đơn COD. Đơn QR: khách tự bấm "Tôi đã chuyển khoản" ở bước thanh toán
+  const isCod = (order.paymentMethod || "COD") === "COD";
+
+  // Chi tiết giảm giá (đơn cũ tạo trước khi có 2 cột này = 0 nên không hiện)
+  const bundleDiscount = Number(order.bundleDiscount || 0);
+  const couponDiscount = Number(order.couponDiscount || 0);
+  const hasDiscount = bundleDiscount > 0 || couponDiscount > 0;
+  const discountRow = { display: "flex", justifyContent: "space-between", margin: "4px 0", fontSize: 14 };
 
   return (
     <div className="order-detail-page">
@@ -99,6 +112,28 @@ const OrderDetail = () => {
                 ))
               : <p style={{color:"#999"}}>Không có sản phẩm</p>
             }
+
+            {hasDiscount && (
+              <div style={{ margin: "10px 0 6px", paddingTop: 8, borderTop: "1px dashed #e2e8f0" }}>
+                <div style={discountRow}>
+                  <span style={{ color: "#64748b" }}>Tạm tính:</span>
+                  <span>{money(Number(order.total) + bundleDiscount + couponDiscount)}</span>
+                </div>
+                {bundleDiscount > 0 && (
+                  <div style={discountRow}>
+                    <span style={{ color: "#64748b" }}>Giảm giá combo:</span>
+                    <span style={{ color: "#dc2626" }}>−{money(bundleDiscount)}</span>
+                  </div>
+                )}
+                {couponDiscount > 0 && (
+                  <div style={discountRow}>
+                    <span style={{ color: "#64748b" }}>Mã giảm giá{order.couponCode ? ` (${order.couponCode})` : ""}:</span>
+                    <span style={{ color: "#dc2626" }}>−{money(couponDiscount)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="detail-total">
               <span>Tổng tiền:</span>
               <strong>{Number(order.total).toLocaleString("vi-VN")} ₫</strong>
@@ -118,8 +153,8 @@ const OrderDetail = () => {
               {paid ? PAYMENT_PAID : PAYMENT_UNPAID}
             </span>
           </p>
-          {/* Chỉ hiện khi đơn chưa thanh toán và chưa bị huỷ */}
-          {!paid && order.status !== "Huỷ" && (
+          {/* Chỉ hiện với đơn COD chưa thanh toán và chưa bị huỷ */}
+          {isCod && !paid && order.status !== "Huỷ" && (
             <button
               type="button"
               onClick={handleConfirmPayment}
@@ -133,6 +168,14 @@ const OrderDetail = () => {
             >
               {confirmingPayment ? "Đang xác nhận..." : "✓ Xác nhận đã nhận tiền"}
             </button>
+          )}
+          {/* Đơn QR: không cần Admin bấm — chỉ báo tình trạng khách đã xác nhận hay chưa */}
+          {!isCod && (
+            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+              {paid
+                ? "Khách đã xác nhận chuyển khoản (đơn tự ghi nhận đã thanh toán). Nên đối chiếu sao kê ngân hàng trước khi giao hàng."
+                : "Đang chờ khách bấm \"Tôi đã chuyển khoản\" ở bước thanh toán."}
+            </p>
           )}
         </div>
 

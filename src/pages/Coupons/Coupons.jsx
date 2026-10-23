@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import api from "../../services/Api";
+import FieldError from "../../components/FieldError/FieldError";
+import useFormValidation from "../../hooks/useFormValidation";
+import { required, number, integer, minValue, maxValue, notPastDate, custom } from "../../utils/validators";
 import "./Coupons.css";
 
 const emptyForm = {
@@ -10,6 +13,36 @@ const emptyForm = {
   expiryDate: "",
   isActive: true,
 };
+
+// Luật kiểm tra từng ô — lỗi hiện chữ đỏ ngay dưới ô nhập.
+// Ngày hết hạn chỉ cấm ở quá khứ khi TẠO MỚI; khi SỬA thì bỏ qua, để vẫn lưu được các thay đổi khác
+// của một mã đã hết hạn mà không bị buộc đổi ngày.
+const buildRules = (isEdit) => ({
+  code: [
+    required("Vui lòng nhập mã giảm giá."),
+    custom((v) =>
+      /^[A-Z0-9_-]{3,20}$/.test(String(v).trim())
+        ? ""
+        : "Mã gồm 3–20 ký tự: chữ in hoa, số, dấu - hoặc _ (VD: SALE10)."
+    ),
+  ],
+  discountPercent: [
+    required("Vui lòng nhập phần trăm giảm."),
+    number("Phần trăm giảm phải là một con số."),
+    integer("Phần trăm giảm phải là số nguyên."),
+    minValue(1, "Phần trăm giảm tối thiểu là 1%."),
+    maxValue(100, "Phần trăm giảm tối đa là 100%."),
+  ],
+  maxUsage: [
+    integer("Số lần dùng phải là số nguyên."),
+    minValue(1, "Số lần dùng tối thiểu là 1 (để trống nếu không giới hạn)."),
+  ],
+  minOrderValue: [
+    number("Giá trị đơn tối thiểu phải là một con số."),
+    minValue(0, "Giá trị đơn tối thiểu không được âm."),
+  ],
+  expiryDate: isEdit ? [] : [notPastDate("Ngày hết hạn không được ở trong quá khứ.")],
+});
 
 const formatPrice = (n) => Number(n).toLocaleString("vi-VN") + " ₫";
 const formatDate = (d) => (d ? new Date(d).toLocaleDateString("vi-VN") : "—");
@@ -23,6 +56,7 @@ const Coupons = () => {
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const { errors, validateField, validateAll, clearError, setErrors } = useFormValidation(buildRules(Boolean(editingId)));
 
   const fetchData = () => {
     setLoading(true);
@@ -37,12 +71,17 @@ const Coupons = () => {
     fetchData();
   }, []);
 
-  const setField = (f, v) => setForm((p) => ({ ...p, [f]: v }));
+  // Gõ lại thì xoá lỗi của chính ô đó
+  const setField = (f, v) => {
+    setForm((p) => ({ ...p, [f]: v }));
+    clearError(f);
+  };
 
   const openCreate = () => {
     setForm(emptyForm);
     setEditingId(null);
     setFormError("");
+    setErrors({});
     setShowForm(true);
   };
 
@@ -57,17 +96,21 @@ const Coupons = () => {
     });
     setEditingId(c.id);
     setFormError("");
+    setErrors({});
     setShowForm(true);
   };
 
   const closeForm = () => {
     setShowForm(false);
     setFormError("");
+    setErrors({});
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
+    if (!validateAll(form)) return;
+
     setSaving(true);
 
     const payload = {
@@ -88,7 +131,15 @@ const Coupons = () => {
       closeForm();
       fetchData();
     } catch (err) {
-      setFormError(err.response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại.");
+      const msg = err.response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại.";
+      // Lỗi trùng mã → hiện ngay dưới ô "Mã giảm giá"; lỗi khác → banner phía trên form
+      if (/tồn tại|đã có|trùng/i.test(msg)) {
+        setErrors((prev) => ({ ...prev, code: msg }));
+        const el = document.querySelector('[name="code"]');
+        if (el) el.focus();
+      } else {
+        setFormError(msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -171,61 +222,79 @@ const Coupons = () => {
         <div className="coupons-admin-modal-overlay" onClick={closeForm}>
           <div className="coupons-admin-modal" onClick={(e) => e.stopPropagation()}>
             <h2>{editingId ? "Sửa mã giảm giá" : "Tạo mã giảm giá mới"}</h2>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               {formError && <p className="coupons-admin-modal-error">⚠️ {formError}</p>}
 
               <div className="coupons-admin-field">
                 <label>Mã giảm giá *</label>
                 <input
                   type="text"
+                  name="code"
+                  className={errors.code ? "is-invalid" : ""}
                   value={form.code}
                   onChange={(e) => setField("code", e.target.value.toUpperCase())}
+                  onBlur={() => validateField("code", form)}
                   placeholder="VD: SALE10"
-                  required
                 />
+                <FieldError message={errors.code} />
               </div>
 
               <div className="coupons-admin-field">
                 <label>Phần trăm giảm (%) *</label>
                 <input
                   type="number"
+                  name="discountPercent"
                   min="1"
                   max="100"
+                  className={errors.discountPercent ? "is-invalid" : ""}
                   value={form.discountPercent}
                   onChange={(e) => setField("discountPercent", e.target.value)}
-                  required
+                  onBlur={() => validateField("discountPercent", form)}
                 />
+                <FieldError message={errors.discountPercent} />
               </div>
 
               <div className="coupons-admin-field">
                 <label>Số lần dùng tối đa</label>
                 <input
                   type="number"
+                  name="maxUsage"
                   min="1"
+                  className={errors.maxUsage ? "is-invalid" : ""}
                   value={form.maxUsage}
                   onChange={(e) => setField("maxUsage", e.target.value)}
+                  onBlur={() => validateField("maxUsage", form)}
                   placeholder="Để trống = không giới hạn"
                 />
+                <FieldError message={errors.maxUsage} />
               </div>
 
               <div className="coupons-admin-field">
                 <label>Giá trị đơn tối thiểu (₫)</label>
                 <input
                   type="number"
+                  name="minOrderValue"
                   min="0"
+                  className={errors.minOrderValue ? "is-invalid" : ""}
                   value={form.minOrderValue}
                   onChange={(e) => setField("minOrderValue", e.target.value)}
+                  onBlur={() => validateField("minOrderValue", form)}
                   placeholder="Để trống = không yêu cầu"
                 />
+                <FieldError message={errors.minOrderValue} />
               </div>
 
               <div className="coupons-admin-field">
                 <label>Ngày hết hạn</label>
                 <input
                   type="date"
+                  name="expiryDate"
+                  className={errors.expiryDate ? "is-invalid" : ""}
                   value={form.expiryDate}
                   onChange={(e) => setField("expiryDate", e.target.value)}
+                  onBlur={() => validateField("expiryDate", form)}
                 />
+                <FieldError message={errors.expiryDate} />
               </div>
 
               <label className="coupons-admin-checkbox">

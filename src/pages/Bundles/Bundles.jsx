@@ -1,20 +1,20 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import api from "../../services/Api";
+import ConfirmDialog from "../../components/Modal/ConfirmDialog";
+import BundleFormModal from "./BundleFormModal";
 import "./Bundles.css";
 
 const formatPrice = (n) => Number(n).toLocaleString("vi-VN") + " ₫";
 
 const Bundles = () => {
-  const navigate = useNavigate();
-  const userStr = localStorage.getItem("adminUser");
-  const currentUser = userStr ? JSON.parse(userStr) : null;
-  const isAdmin = currentUser?.role === "Admin";
-
   const [bundles, setBundles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  // Popup Thêm/Sửa: id = null → thêm mới, có id → sửa combo đó
+  const [formModal, setFormModal] = useState({ open: false, id: null });
+  // Hộp xác nhận Ẩn / Hiện lại
+  const [confirm, setConfirm] = useState({ bundle: null, busy: false, error: "" });
 
   const fetchBundles = async () => {
     try {
@@ -32,21 +32,28 @@ const Bundles = () => {
 
   useEffect(() => { fetchBundles(); }, []);
 
-  const handleToggleActive = async (bundle) => {
-    const willHide = bundle.isActive;
-    const actionText = willHide ? "ẩn" : "hiện lại";
-    if (!window.confirm(`Bạn có chắc muốn ${actionText} combo "${bundle.name}" không?`)) return;
+  const askToggleActive = (bundle) => setConfirm({ bundle, busy: false, error: "" });
 
+  const doToggleActive = async () => {
+    const bundle = confirm.bundle;
+    if (!bundle) return;
+    setConfirm(c => ({ ...c, busy: true, error: "" }));
     try {
-      if (willHide) {
+      if (bundle.isActive) {
         await api.delete(`/Bundles/${bundle.id}`);
       } else {
         await api.patch(`/Bundles/${bundle.id}/restore`);
       }
+      setConfirm({ bundle: null, busy: false, error: "" });
       await fetchBundles();
     } catch {
-      alert("Lỗi khi cập nhật trạng thái hiển thị combo!");
+      setConfirm(c => ({ ...c, busy: false, error: "Lỗi khi cập nhật trạng thái hiển thị combo!" }));
     }
+  };
+
+  const handleSaved = () => {
+    setFormModal({ open: false, id: null });
+    fetchBundles();
   };
 
   const filtered = bundles.filter(b => b.name.toLowerCase().includes(search.toLowerCase()));
@@ -62,7 +69,7 @@ const Bundles = () => {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <button className="btn-add" onClick={() => navigate("/bundles/create")}>
+        <button className="btn-add" onClick={() => setFormModal({ open: true, id: null })}>
           + Thêm combo
         </button>
       </div>
@@ -98,6 +105,12 @@ const Bundles = () => {
                     : <span className="badge badge--muted">Đã ẩn</span>}
                 </div>
                 <p className="bundle-card__items-count">{b.items.length} sản phẩm trong combo</p>
+                {/* Cảnh báo cho Admin/Nhân viên: combo có sản phẩm hết hàng thì khách không đặt được */}
+                {b.isAvailable === false && (
+                  <p style={{ margin: "4px 0 8px", fontSize: 12.5, color: "#b91c1c", fontWeight: 600 }}>
+                    ⚠️ Hết hàng: {(b.outOfStockItems || []).join(", ")}
+                  </p>
+                )}
                 <ul className="bundle-card__items-list">
                   {b.items.slice(0, 3).map(item => (
                     <li key={item.productId}>{item.productName} x{item.quantity}</li>
@@ -111,21 +124,45 @@ const Bundles = () => {
                   <strong>{formatPrice(b.finalPrice)}</strong>
                 </div>
                 <div className="bundle-card__actions">
-                  <button className="btn-edit" onClick={() => navigate(`/bundles/edit/${b.id}`)}>✏️ Sửa</button>
-                  {isAdmin && (
-                    <button
-                      className={b.isActive ? "btn-del" : "btn-restore"}
-                      onClick={() => handleToggleActive(b)}
-                    >
-                      {b.isActive ? "🙈 Ẩn" : "👁️ Hiện lại"}
-                    </button>
-                  )}
+                  <button className="btn-edit" onClick={() => setFormModal({ open: true, id: b.id })}>✏️ Sửa</button>
+                  <button
+                    className={b.isActive ? "btn-del" : "btn-restore"}
+                    onClick={() => askToggleActive(b)}
+                  >
+                    {b.isActive ? "🙈 Ẩn" : "👁️ Hiện lại"}
+                  </button>
                 </div>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Popup Thêm / Sửa combo — mount lại mỗi lần mở (key) để form luôn sạch */}
+      {formModal.open && (
+        <BundleFormModal
+          key={formModal.id ?? "new"}
+          bundleId={formModal.id}
+          onClose={() => setFormModal({ open: false, id: null })}
+          onSaved={handleSaved}
+        />
+      )}
+
+      {/* Xác nhận Ẩn / Hiện lại combo */}
+      <ConfirmDialog
+        open={!!confirm.bundle}
+        title={confirm.bundle?.isActive ? "Ẩn combo" : "Hiện lại combo"}
+        message={`Bạn có chắc muốn ${confirm.bundle?.isActive ? "ẩn" : "hiện lại"} combo "${confirm.bundle?.name ?? ""}" không?`}
+        note={confirm.bundle?.isActive
+          ? "Combo sẽ không còn hiện cho khách, có thể hiện lại bất cứ lúc nào."
+          : "Combo sẽ hiện lại cho khách."}
+        confirmLabel={confirm.bundle?.isActive ? "Ẩn combo" : "Hiện lại"}
+        danger={!!confirm.bundle?.isActive}
+        busy={confirm.busy}
+        error={confirm.error}
+        onConfirm={doToggleActive}
+        onCancel={() => setConfirm({ bundle: null, busy: false, error: "" })}
+      />
     </div>
   );
 };

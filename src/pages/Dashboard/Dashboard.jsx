@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import api from "../../services/Api";
+import { isAdmin } from "../../utils/permissions";
 import "./Dashboard.css";
 
 const STATUS_BADGE = {
@@ -40,6 +41,8 @@ const pctChange = (curr, prev) => {
 const CATEGORY_COLORS = ["#4f72e3", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#06b6d4", "#ec4899"];
 
 const Dashboard = () => {
+  // Admin (giám đốc) thấy đầy đủ; Nhân viên chỉ thấy phần "việc cần làm" — ẩn doanh thu, biểu đồ, AI.
+  const admin = isAdmin();
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [contacts, setContacts] = useState([]);
@@ -97,6 +100,7 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
+    if (!admin) return; // nhân viên không gọi API AI
     let cancelled = false;
     setInsightLoading(true);
     setInsightError("");
@@ -112,9 +116,10 @@ const Dashboard = () => {
         if (!cancelled) setInsightLoading(false);
       });
     return () => { cancelled = true; };
-  }, [chartRange]);
+  }, [chartRange, admin]);
 
   useEffect(() => {
+    if (!admin) return;
     let cancelled = false;
     setRecLoading(true);
     setRecError("");
@@ -129,9 +134,10 @@ const Dashboard = () => {
         if (!cancelled) setRecLoading(false);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [admin]);
 
   useEffect(() => {
+    if (!admin) return;
     let cancelled = false;
     setAnomalyLoading(true);
     setAnomalyError("");
@@ -147,7 +153,7 @@ const Dashboard = () => {
         if (!cancelled) setAnomalyLoading(false);
       });
     return () => { cancelled = true; };
-  }, [chartRange]);
+  }, [chartRange, admin]);
 
   if (loading) {
     return (
@@ -239,6 +245,19 @@ const Dashboard = () => {
       up: cancellationChange <= 0, icon: "❌", color: "#dc2626",
     },
   ];
+
+  // Thẻ số liệu cho NHÂN VIÊN: chỉ "việc cần làm" (không có doanh thu / giá trị đơn TB / tỷ lệ huỷ)
+  const pendingOrdersCount = orders.filter(o => o.status === "Chờ xác nhận").length;
+  const staffStats = [
+    {
+      label: "Đơn chờ xác nhận", value: String(pendingOrdersCount),
+      change: pendingOrdersCount > 0 ? "Cần xử lý" : "Đã xử lý hết",
+      up: pendingOrdersCount === 0, icon: "⏳", color: "#f59e0b",
+    },
+    stats[2], // Sản phẩm đang bán
+    stats[3], // Liên hệ chưa xử lý
+  ];
+  const visibleStats = admin ? stats : staffStats;
 
   // ── Biểu đồ doanh thu N ngày gần nhất (mọi đơn trừ đơn đã Huỷ) — N do Admin chọn qua chartRange ──
   const days = Array.from({ length: chartRange }, (_, i) => {
@@ -333,6 +352,7 @@ const Dashboard = () => {
   return (
     <div className="dashboard">
 
+      {admin && (<>
       {/* ── Nhận xét nhanh bằng AI — đặt TRÊN CÙNG, trước cả số liệu, để Admin đọc nhận
           định tổng quan trước khi nhìn vào từng con số. Thiết kế dạng banner GỌN: nền nhạt
           tách biệt hẳn khỏi các dashboard-card trắng bên dưới, mặc định chỉ hiện 2 dòng kèm
@@ -406,9 +426,11 @@ const Dashboard = () => {
         )}
       </div>
 
+      </>)}
+
       {/* Stats */}
       <div className="stats-grid">
-        {stats.map((s, i) => (
+        {visibleStats.map((s, i) => (
           <div className="stat-card" key={i}>
             <div className="stat-card__icon" style={{ background: s.color + "18", color: s.color }}>{s.icon}</div>
             <div className="stat-card__info">
@@ -422,6 +444,7 @@ const Dashboard = () => {
         ))}
       </div>
 
+      {admin && (<>
       {/* Revenue chart */}
       <div className="dashboard-card">
         <div className="dashboard-card__header">
@@ -563,6 +586,8 @@ const Dashboard = () => {
         </div>
       </div>
 
+      </>)}
+
       {/* Recent Orders */}
       <div className="dashboard-card">
         <div className="dashboard-card__header">
@@ -623,6 +648,7 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {admin && (<>
       {/* Best sellers (đánh dấu thủ công) */}
       <div className="dashboard-card">
         <div className="dashboard-card__header"><h2>Sản phẩm bán chạy (đánh dấu thủ công)</h2></div>
@@ -659,6 +685,8 @@ const Dashboard = () => {
           </>
         )}
       </div>
+
+      </>)}
 
     </div>
   );

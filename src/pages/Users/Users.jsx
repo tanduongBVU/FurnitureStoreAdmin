@@ -94,7 +94,8 @@ const Users = () => {
             </select>
           </div>
         </div>
-        <button className="btn-add" onClick={() => navigate("/users/create")}>+ Thêm người dùng</button>
+        {/* Chỉ tạo được tài khoản nội bộ — khách hàng tự đăng ký trên website */}
+        <button className="btn-add" onClick={() => navigate("/users/create")}>+ Thêm nhân viên / Admin</button>
       </div>
 
       {/* Error */}
@@ -116,7 +117,9 @@ const Users = () => {
               <tbody>
                 {paginated.length === 0 ? (
                   <tr><td colSpan={7} className="empty-row">Không tìm thấy người dùng nào</td></tr>
-                ) : paginated.map(u => (
+                ) : paginated.map(u => {
+                  const isCustomer = u.role === "Khách hàng";
+                  return (
                   <tr key={u.id}>
                     <td>
                       <div className="user-cell">
@@ -139,7 +142,12 @@ const Users = () => {
                     <td><span className={`badge ${STATUS_CLASS[u.status]}`}>{u.status}</span></td>
                     <td>
                       <div className="action-btns">
-                        <button className="btn-edit" onClick={() => navigate(`/users/edit/${u.id}`)}>✏️</button>
+                        {/* Khách hàng: chỉ XEM (Admin không được sửa thông tin khách). Tài khoản nội bộ: sửa được. */}
+                        <button
+                          className="btn-edit"
+                          onClick={() => navigate(`/users/edit/${u.id}`)}
+                          title={isCustomer ? "Xem thông tin (không được sửa)" : "Sửa"}
+                        >{isCustomer ? "👁️" : "✏️"}</button>
                         <button
                           className={u.status === "Hoạt động" ? "btn-lock" : "btn-unlock"}
                           onClick={() => handleToggleStatus(u)}
@@ -148,7 +156,8 @@ const Users = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

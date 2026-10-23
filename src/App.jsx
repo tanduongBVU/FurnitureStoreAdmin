@@ -4,19 +4,12 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard/Dashboard";
 
 import Products from "./pages/Products/Products";
-import ProductCreate from "./pages/Products/ProductCreate";
-import ProductEdit from "./pages/Products/ProductEdit";
 
 import Bundles from "./pages/Bundles/Bundles";
-import BundleCreate from "./pages/Bundles/BundleCreate";
-import BundleEdit from "./pages/Bundles/BundleEdit";
 
 import Services from "./pages/Services/Services";
-import Projects from "./pages/Projects/Projects";
 
 import BlogPosts from "./pages/BlogPosts/BlogPosts";
-import BlogPostCreate from "./pages/BlogPosts/BlogPostCreate";
-import BlogPostEdit from "./pages/BlogPosts/BlogPostEdit";
 
 import ReviewsAdmin from "./pages/Reviews/ReviewsAdmin";
 
@@ -26,7 +19,6 @@ import OrderDetail from "./pages/Orders/OrderDetail";
 import Contacts from "./pages/Contacts/Contacts";
 import ContactDetail from "./pages/Contacts/ContactDetail";
 
-import Newsletter from "./pages/Newsletter/Newsletter";
 import Coupons from "./pages/Coupons/Coupons";
 
 import Users from "./pages/Users/Users";
@@ -34,6 +26,7 @@ import UserCreate from "./pages/Users/UserCreate";
 import UserEdit from "./pages/Users/UserEdit";
 
 import SiteSettings from "./pages/SiteSettings/SiteSettings";
+import Profile from "./pages/Profile/Profile";
 
 import Login from "./pages/Login/Login";
 
@@ -51,21 +44,23 @@ const App = () => {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="profile" element={<Profile />} />
 
+        {/* Thêm/Sửa sản phẩm, combo, bài viết giờ là popup ngay trên trang danh sách — các đường dẫn cũ
+            (còn trong lịch sử/bookmark) tự chuyển về danh sách thay vì báo lỗi. */}
         <Route path="products" element={<Products />} />
-        <Route path="products/create" element={<ProductCreate />} />
-        <Route path="products/edit/:id" element={<ProductEdit />} />
+        <Route path="products/create" element={<Navigate to="/products" replace />} />
+        <Route path="products/edit/:id" element={<Navigate to="/products" replace />} />
 
         <Route path="bundles" element={<Bundles />} />
-        <Route path="bundles/create" element={<BundleCreate />} />
-        <Route path="bundles/edit/:id" element={<BundleEdit />} />
+        <Route path="bundles/create" element={<Navigate to="/bundles" replace />} />
+        <Route path="bundles/edit/:id" element={<Navigate to="/bundles" replace />} />
 
         <Route path="services" element={<Services />} />
-        <Route path="projects" element={<Projects />} />
 
         <Route path="blogposts" element={<BlogPosts />} />
-        <Route path="blogposts/create" element={<BlogPostCreate />} />
-        <Route path="blogposts/edit/:id" element={<BlogPostEdit />} />
+        <Route path="blogposts/create" element={<Navigate to="/blogposts" replace />} />
+        <Route path="blogposts/edit/:id" element={<Navigate to="/blogposts" replace />} />
 
         <Route path="reviews" element={<ReviewsAdmin />} />
 
@@ -75,7 +70,7 @@ const App = () => {
         <Route path="contacts" element={<Contacts />} />
         <Route path="contacts/:id" element={<ContactDetail />} />
 
-        <Route path="newsletter" element={<Newsletter />} />
+
         <Route path="coupons" element={<Coupons />} />
 
         <Route
@@ -103,14 +98,7 @@ const App = () => {
           }
         />
 
-        <Route
-          path="settings"
-          element={
-            <ProtectedRoute adminOnly>
-              <SiteSettings />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="settings" element={<SiteSettings />} />
       </Route>
     </Routes>
   );

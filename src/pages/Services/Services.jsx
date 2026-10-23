@@ -3,6 +3,9 @@ import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import api from "../../services/Api";
 import ImageUploadInput from "../../components/ImageUploadInput/ImageUploadInput";
+import FieldError from "../../components/FieldError/FieldError";
+import useFormValidation from "../../hooks/useFormValidation";
+import { required, minLength, maxLength, integer, minValue, imagePath } from "../../utils/validators";
 import "./Services.css";
 
 // Toolbar có "video" — Quill sẽ hỏi dán link video (VD: link nhúng YouTube) rồi tự chèn
@@ -31,6 +34,21 @@ const emptyForm = {
   displayOrder: 0,
 };
 
+// Luật kiểm tra từng ô — lỗi hiện chữ đỏ ngay dưới ô nhập
+const RULES = {
+  title: [
+    required("Vui lòng nhập tên dịch vụ."),
+    minLength(3, "Tên dịch vụ cần ít nhất 3 ký tự."),
+    maxLength(200, "Tên dịch vụ tối đa 200 ký tự."),
+  ],
+  image: [imagePath()],
+  shortDescription: [maxLength(300, "Mô tả ngắn tối đa 300 ký tự.")],
+  displayOrder: [
+    integer("Thứ tự hiển thị phải là số nguyên."),
+    minValue(0, "Thứ tự hiển thị không được âm."),
+  ],
+};
+
 const Services = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +59,7 @@ const Services = () => {
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const { errors, validateField, validateAll, clearError, setErrors } = useFormValidation(RULES);
 
   const fetchData = () => {
     setLoading(true);
@@ -55,12 +74,17 @@ const Services = () => {
     fetchData();
   }, []);
 
-  const setField = (f, v) => setForm((p) => ({ ...p, [f]: v }));
+  // Gõ lại thì xoá lỗi của chính ô đó
+  const setField = (f, v) => {
+    setForm((p) => ({ ...p, [f]: v }));
+    clearError(f);
+  };
 
   const openCreate = () => {
     setForm({ ...emptyForm, type: filterType !== "all" ? filterType : "thi-cong" });
     setEditingId(null);
     setFormError("");
+    setErrors({});
     setShowForm(true);
   };
 
@@ -75,17 +99,21 @@ const Services = () => {
     });
     setEditingId(s.id);
     setFormError("");
+    setErrors({});
     setShowForm(true);
   };
 
   const closeForm = () => {
     setShowForm(false);
     setFormError("");
+    setErrors({});
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
+    if (!validateAll(form)) return;
+
     setSaving(true);
 
     const payload = {
@@ -96,12 +124,6 @@ const Services = () => {
       content: form.content,
       displayOrder: Number(form.displayOrder) || 0,
     };
-
-    if (!payload.title) {
-      setFormError("Tên dịch vụ không được để trống.");
-      setSaving(false);
-      return;
-    }
 
     try {
       if (editingId) {
@@ -193,7 +215,7 @@ const Services = () => {
         <div className="services-admin-modal-overlay" onClick={closeForm}>
           <div className="services-admin-modal" onClick={(e) => e.stopPropagation()}>
             <h2>{editingId ? "Sửa dịch vụ" : "Thêm dịch vụ mới"}</h2>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               {formError && <p className="services-admin-modal-error">⚠️ {formError}</p>}
 
               <div className="services-admin-field">
@@ -208,10 +230,13 @@ const Services = () => {
                 <label>Tên dịch vụ *</label>
                 <input
                   type="text"
+                  name="title"
+                  className={errors.title ? "is-invalid" : ""}
                   value={form.title}
                   onChange={(e) => setField("title", e.target.value)}
-                  required
+                  onBlur={() => validateField("title", form)}
                 />
+                <FieldError message={errors.title} />
               </div>
 
               <div className="services-admin-field">
@@ -221,15 +246,20 @@ const Services = () => {
                   onChange={(url) => setField("image", url)}
                   placeholder="https://... hoặc tải lên từ máy →"
                 />
+                <FieldError message={errors.image} />
               </div>
 
               <div className="services-admin-field">
                 <label>Mô tả ngắn</label>
                 <textarea
                   rows={2}
+                  name="shortDescription"
+                  className={errors.shortDescription ? "is-invalid" : ""}
                   value={form.shortDescription}
                   onChange={(e) => setField("shortDescription", e.target.value)}
+                  onBlur={() => validateField("shortDescription", form)}
                 />
+                <FieldError message={errors.shortDescription} />
               </div>
 
               <div className="services-admin-field">
@@ -247,9 +277,13 @@ const Services = () => {
                 <label>Thứ tự hiển thị</label>
                 <input
                   type="number"
+                  name="displayOrder"
+                  className={errors.displayOrder ? "is-invalid" : ""}
                   value={form.displayOrder}
                   onChange={(e) => setField("displayOrder", e.target.value)}
+                  onBlur={() => validateField("displayOrder", form)}
                 />
+                <FieldError message={errors.displayOrder} />
               </div>
 
               <div className="services-admin-modal-actions">

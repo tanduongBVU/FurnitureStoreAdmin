@@ -1,24 +1,26 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import api from "../../services/Api";
+import ConfirmDialog from "../../components/Modal/ConfirmDialog";
+import ProductFormModal from "./ProductFormModal";
 import "./Products.css";
 
-const CATEGORIES = ["Tất cả", "Phòng khách", "Phòng ngủ", "Phòng ăn", "Phòng làm việc", "Ban công"];
+// Phải khớp với danh sách danh mục ở form thêm/sửa sản phẩm (ProductCreate/ProductEdit)
+const CATEGORIES = ["Tất cả", "Phòng khách", "Phòng ngủ", "Phòng ăn", "Phòng làm việc", "Phòng tắm", "Ban công"];
 const PAGE_SIZE = 6;
 const statusOf = (stock) => stock === 0 ? "Hết hàng" : stock <= 2 ? "Sắp hết" : "Còn hàng";
 const STATUS_CLASS = { "Còn hàng": "badge--success", "Sắp hết": "badge--warning", "Hết hàng": "badge--danger" };
 
 const Products = () => {
-  const navigate = useNavigate();
-  const userStr = localStorage.getItem("adminUser");
-  const currentUser = userStr ? JSON.parse(userStr) : null;
-  const isAdmin = currentUser?.role === "Admin";
   const [products, setProducts]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState("");
   const [search, setSearch]       = useState("");
   const [category, setCategory]   = useState("Tất cả");
   const [page, setPage]           = useState(1);
+  // Popup Thêm/Sửa: id = null → thêm mới, có id → sửa sản phẩm đó
+  const [formModal, setFormModal] = useState({ open: false, id: null });
+  // Hộp xác nhận Ẩn / Hiện lại
+  const [confirm, setConfirm] = useState({ product: null, busy: false, error: "" });
 
   const fetchProducts = async () => {
     try {
@@ -36,21 +38,28 @@ const Products = () => {
 
   useEffect(() => { fetchProducts(); }, []);
 
-  const handleToggleActive = async (product) => {
-    const willHide = product.isActive;
-    const actionText = willHide ? "ẩn" : "hiện lại";
-    if (!window.confirm(`Bạn có chắc muốn ${actionText} sản phẩm "${product.name}" không?`)) return;
+  const askToggleActive = (product) => setConfirm({ product, busy: false, error: "" });
 
+  const doToggleActive = async () => {
+    const product = confirm.product;
+    if (!product) return;
+    setConfirm(c => ({ ...c, busy: true, error: "" }));
     try {
-      if (willHide) {
+      if (product.isActive) {
         await api.delete(`/Products/${product.id}`);
       } else {
         await api.patch(`/Products/${product.id}/restore`);
       }
+      setConfirm({ product: null, busy: false, error: "" });
       await fetchProducts();
     } catch {
-      alert("Lỗi khi cập nhật trạng thái hiển thị sản phẩm!");
+      setConfirm(c => ({ ...c, busy: false, error: "Lỗi khi cập nhật trạng thái hiển thị sản phẩm!" }));
     }
+  };
+
+  const handleSaved = () => {
+    setFormModal({ open: false, id: null });
+    fetchProducts();
   };
 
   const filtered = products.filter(p => {
@@ -85,7 +94,7 @@ const Products = () => {
             ))}
           </div>
         </div>
-        <button className="btn-add" onClick={() => navigate("/products/create")}>
+        <button className="btn-add" onClick={() => setFormModal({ open: true, id: null })}>
           + Thêm sản phẩm
         </button>
       </div>
@@ -184,15 +193,13 @@ const Products = () => {
                       </td>
                       <td>
                         <div className="action-btns">
-                          <button className="btn-edit" onClick={() => navigate(`/products/edit/${p.id}`)}>✏️ Sửa</button>
-                          {isAdmin && (
-                            <button
-                              className={p.isActive ? "btn-del" : "btn-restore"}
-                              onClick={() => handleToggleActive(p)}
-                            >
-                              {p.isActive ? "🙈 Ẩn" : "👁️ Hiện lại"}
-                            </button>
-                          )}
+                          <button className="btn-edit" onClick={() => setFormModal({ open: true, id: p.id })}>✏️ Sửa</button>
+                          <button
+                            className={p.isActive ? "btn-del" : "btn-restore"}
+                            onClick={() => askToggleActive(p)}
+                          >
+                            {p.isActive ? "🙈 Ẩn" : "👁️ Hiện lại"}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -214,6 +221,32 @@ const Products = () => {
           </div>
         </>
       )}
+
+      {/* Popup Thêm / Sửa sản phẩm — mount lại mỗi lần mở (key) để form luôn sạch */}
+      {formModal.open && (
+        <ProductFormModal
+          key={formModal.id ?? "new"}
+          productId={formModal.id}
+          onClose={() => setFormModal({ open: false, id: null })}
+          onSaved={handleSaved}
+        />
+      )}
+
+      {/* Xác nhận Ẩn / Hiện lại sản phẩm */}
+      <ConfirmDialog
+        open={!!confirm.product}
+        title={confirm.product?.isActive ? "Ẩn sản phẩm" : "Hiện lại sản phẩm"}
+        message={`Bạn có chắc muốn ${confirm.product?.isActive ? "ẩn" : "hiện lại"} sản phẩm "${confirm.product?.name ?? ""}" không?`}
+        note={confirm.product?.isActive
+          ? "Sản phẩm sẽ không còn hiện cho khách. Dữ liệu và lịch sử đơn hàng được giữ nguyên, có thể hiện lại bất cứ lúc nào."
+          : "Sản phẩm sẽ hiện lại cho khách."}
+        confirmLabel={confirm.product?.isActive ? "Ẩn sản phẩm" : "Hiện lại"}
+        danger={!!confirm.product?.isActive}
+        busy={confirm.busy}
+        error={confirm.error}
+        onConfirm={doToggleActive}
+        onCancel={() => setConfirm({ product: null, busy: false, error: "" })}
+      />
     </div>
   );
 };

@@ -1,0 +1,21 @@
+/* Chữ đỏ báo lỗi dưới ô nhập */
+.field-error {
+  display: block;
+  margin-top: 5px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  font-weight: 500;
+  color: var(--danger, #dc2626);
+}
+
+/* Viền đỏ cho ô đang bị lỗi — thêm class "is-invalid" vào input/textarea/select */
+input.is-invalid,
+textarea.is-invalid,
+select.is-invalid {
+  border-color: var(--danger, #dc2626) !important;
+}
+input.is-invalid:focus,
+textarea.is-invalid:focus,
+select.is-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important;
+}
