@@ -36,8 +36,9 @@ const OrderDetail = () => {
         headers: { "Content-Type": "application/json" }
       });
       navigate("/orders");
-    } catch {
-      setError("Lỗi khi cập nhật trạng thái!");
+    } catch (err) {
+      // Backend trả lý do cụ thể (VD: mở lại đơn đã huỷ nhưng không đủ hàng) thì hiện đúng lý do đó
+      setError(err.response?.data?.message || "Lỗi khi cập nhật trạng thái!");
       setSaving(false);
     }
   };

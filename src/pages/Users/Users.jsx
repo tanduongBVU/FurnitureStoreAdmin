@@ -44,8 +44,9 @@ const Users = () => {
         headers: { "Content-Type": "application/json" }
       });
       await fetchUsers();
-    } catch {
-      alert("Lỗi khi cập nhật trạng thái!");
+    } catch (err) {
+      // Hiện đúng lý do Backend trả về (VD: không thể khoá Admin), không báo lỗi chung chung
+      alert(err.response?.data?.message || "Lỗi khi cập nhật trạng thái!");
     }
   };
 
@@ -119,6 +120,7 @@ const Users = () => {
                   <tr><td colSpan={7} className="empty-row">Không tìm thấy người dùng nào</td></tr>
                 ) : paginated.map(u => {
                   const isCustomer = u.role === "Khách hàng";
+                  const isAdmin = u.role === "Admin"; // Admin không khoá được (kể cả chính mình)
                   return (
                   <tr key={u.id}>
                     <td>
@@ -151,7 +153,13 @@ const Users = () => {
                         <button
                           className={u.status === "Hoạt động" ? "btn-lock" : "btn-unlock"}
                           onClick={() => handleToggleStatus(u)}
-                          title={u.status === "Hoạt động" ? "Khoá tài khoản" : "Mở khoá"}
+                          disabled={isAdmin && u.status === "Hoạt động"}
+                          style={isAdmin && u.status === "Hoạt động" ? { opacity: 0.35, cursor: "not-allowed" } : undefined}
+                          title={
+                            isAdmin && u.status === "Hoạt động"
+                              ? "Không thể khoá tài khoản Admin"
+                              : u.status === "Hoạt động" ? "Khoá tài khoản" : "Mở khoá"
+                          }
                         >{u.status === "Hoạt động" ? "🔒" : "🔓"}</button>
                       </div>
                     </td>

@@ -156,6 +156,7 @@ const ProductEdit = () => {
         material: hasVariants ? null : form.material,
         color: hasVariants ? null : form.color,
         variants: variants.map(v => ({
+          id: v.id, // giữ ID biến thể cũ (dòng mới thêm chưa có id) để Backend cập nhật tại chỗ, không tạo lại
           material: v.material,
           color: v.color,
           price: Number(v.price) || 0,

@@ -21,6 +21,24 @@ const REC_BADGE = {
 
 const formatPrice = (n) => Number(n || 0).toLocaleString("vi-VN") + " ₫";
 const formatDateShort = (d) => new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+// Giờ:phút + ngày/tháng — dùng cho cột thời gian của đơn hàng và liên hệ
+const formatDateTime = (d) =>
+  new Date(d).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" });
+
+// Ngưỡng cảnh báo tồn kho: tồn ≤ ngưỡng này thì coi là "sắp hết" (0 là "hết hàng")
+const LOW_STOCK_LIMIT = 3;
+// Sản phẩm đăng chưa quá số ngày này thì chưa kết luận là "chưa bán được"
+const NEW_PRODUCT_DAYS = 14;
+
+// Gợi ý hành động của AI chỉ có chữ, nên đoán nút chuyển trang theo nội dung gợi ý.
+// Không khớp từ khoá nào thì không hiện nút. Chỉ chuyển trang, không lọc sẵn.
+const recAction = (r) => {
+  const text = `${r.title || ""} ${r.detail || ""}`.toLowerCase();
+  if (/liên hệ/.test(text)) return { to: "/contacts", label: "Xem liên hệ" };
+  if (/đơn|xác nhận/.test(text)) return { to: "/orders", label: "Xem đơn hàng" };
+  if (/hàng|kho|nhập|sản phẩm|combo|giảm giá|khuyến mãi/.test(text)) return { to: "/products", label: "Xem sản phẩm" };
+  return null;
+};
 // Khoá ngày dạng yyyy-MM-dd (theo giờ máy) — khớp với trường "date" Backend trả về ở /Dashboard/anomalies
 const dateKey = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -51,6 +69,9 @@ const Dashboard = () => {
 
   // Số ngày hiển thị trong biểu đồ doanh thu — khách Admin tự chọn 7 / 14 / 30 ngày gần nhất
   const [chartRange, setChartRange] = useState(14);
+  // Giữ trang ngắn: gợi ý AI mặc định chỉ hiện 3 dòng đầu, phân tích sản phẩm gộp vào 1 khung có tab
+  const [recExpanded, setRecExpanded] = useState(false);
+  const [analysisTab, setAnalysisTab] = useState("category"); // "category" | "ranking" | "never"
 
   // ── Nhận xét nhanh bằng AI (Gemini) — xem DashboardController.GetInsights. KHÔNG dùng AI
   // để tính số liệu, chỉ nhờ AI đọc số liệu đã tính sẵn ở Backend rồi viết nhận xét ngắn.
@@ -189,6 +210,11 @@ const Dashboard = () => {
   // ── Sản phẩm ──
   const activeProducts = products.filter(p => p.isActive);
   const newProductsThisMonth = products.filter(p => isSameMonth(p.createdAt, now)).length;
+  // Sản phẩm sắp hết VÀ đã hết hàng (tồn ≤ ngưỡng), ít tồn nhất lên đầu
+  const lowStockAll = activeProducts
+    .filter(p => p.stock <= LOW_STOCK_LIMIT)
+    .sort((a, b) => a.stock - b.stock);
+  const lowStock = lowStockAll.slice(0, 5);
 
   // ── Liên hệ ──
   const newContacts = contacts.filter(c => c.status === "Mới");
@@ -215,24 +241,24 @@ const Dashboard = () => {
 
   const stats = [
     {
-      label: "Tổng doanh thu", value: formatPrice(totalRevenue),
-      change: `${revenueChange >= 0 ? "+" : ""}${revenueChange.toFixed(1)}% so với tháng trước`,
+      label: "Tổng doanh thu (đơn Hoàn thành)", value: formatPrice(totalRevenue),
+      change: `Tháng này ${formatPrice(revenueThisMonth)} (${revenueChange >= 0 ? "+" : ""}${revenueChange.toFixed(1)}% so với tháng trước)`,
       up: revenueChange >= 0, icon: "💰", color: "#4f72e3",
     },
     {
       label: "Đơn hàng tháng này", value: String(ordersThisMonth),
       change: `${ordersChange >= 0 ? "+" : ""}${ordersChange.toFixed(1)}% so với tháng trước`,
-      up: ordersChange >= 0, icon: "📦", color: "#22c55e",
+      up: ordersChange >= 0, icon: "📦", color: "#22c55e", to: "/orders",
     },
     {
       label: "Sản phẩm đang bán", value: String(activeProducts.length),
       change: `+${newProductsThisMonth} mới trong tháng`,
-      up: true, icon: "🪑", color: "#f59e0b",
+      up: true, icon: "🪑", color: "#f59e0b", to: "/products",
     },
     {
       label: "Liên hệ chưa xử lý", value: String(newContacts.length),
       change: `${contactsDelta >= 0 ? "+" : ""}${contactsDelta} so với tháng trước`,
-      up: contactsDelta <= 0, icon: "✉️", color: "#ef4444",
+      up: contactsDelta <= 0, icon: "✉️", color: "#ef4444", to: "/contacts",
     },
     {
       label: "Giá trị đơn TB (tháng này)", value: formatPrice(aovThisMonth),
@@ -242,20 +268,40 @@ const Dashboard = () => {
     {
       label: "Tỷ lệ đơn huỷ (tháng này)", value: `${cancellationRateThisMonth.toFixed(1)}%`,
       change: `${cancellationChange >= 0 ? "+" : ""}${cancellationChange.toFixed(1)} điểm % so với tháng trước`,
-      up: cancellationChange <= 0, icon: "❌", color: "#dc2626",
+      up: cancellationChange <= 0, icon: "❌", color: "#dc2626", to: "/orders",
     },
   ];
 
   // Thẻ số liệu cho NHÂN VIÊN: chỉ "việc cần làm" (không có doanh thu / giá trị đơn TB / tỷ lệ huỷ)
   const pendingOrdersCount = orders.filter(o => o.status === "Chờ xác nhận").length;
+  const processingOrdersCount = orders.filter(o => o.status === "Đang xử lý").length;
   const staffStats = [
     {
       label: "Đơn chờ xác nhận", value: String(pendingOrdersCount),
-      change: pendingOrdersCount > 0 ? "Cần xử lý" : "Đã xử lý hết",
-      up: pendingOrdersCount === 0, icon: "⏳", color: "#f59e0b",
+      change: pendingOrdersCount > 0 ? "Cần xử lý ngay" : "Đã xử lý hết",
+      up: pendingOrdersCount === 0, icon: "⏳", color: "#f59e0b", to: "/orders",
     },
-    stats[2], // Sản phẩm đang bán
-    stats[3], // Liên hệ chưa xử lý
+    {
+      label: "Đơn đang xử lý", value: String(processingOrdersCount),
+      change: "Đã xác nhận, chưa hoàn thành",
+      up: true, icon: "🛠️", color: "#0ea5e9", to: "/orders",
+    },
+    {
+      label: "Liên hệ chưa xử lý", value: String(newContacts.length),
+      change: newContacts.length > 0 ? "Cần phản hồi" : "Đã xử lý hết",
+      up: newContacts.length === 0, icon: "✉️", color: "#ef4444", to: "/contacts",
+    },
+    {
+      label: "Sản phẩm sắp hết / hết hàng", value: String(lowStockAll.length),
+      change: lowStockAll.length > 0 ? `Tồn từ ${LOW_STOCK_LIMIT} trở xuống` : "Tồn kho ổn",
+      up: lowStockAll.length === 0, icon: "📉", color: "#d97706", to: "/products",
+    },
+  ];
+  // Khu "Công việc cần xử lý" của nhân viên: mỗi dòng dẫn tới trang xử lý tương ứng
+  const staffTasks = [
+    { label: "Đơn hàng chờ xác nhận", count: pendingOrdersCount, to: "/orders", action: "Xem đơn hàng" },
+    { label: "Liên hệ mới chưa phản hồi", count: newContacts.length, to: "/contacts", action: "Xem liên hệ" },
+    { label: "Sản phẩm sắp hết hoặc hết hàng", count: lowStockAll.length, to: "/products", action: "Xem sản phẩm" },
   ];
   const visibleStats = admin ? stats : staffStats;
 
@@ -280,18 +326,16 @@ const Dashboard = () => {
   });
   const maxChartValue = Math.max(1, ...chartData.map(d => d.total));
   const hasChartData = chartData.some(d => d.total > 0);
+  const rangeTotal = chartData.reduce((s, d) => s + d.total, 0);
 
-  // ── Đơn hàng gần đây (5 gần nhất) ──
+  // ── Đơn hàng: Admin xem 5 đơn gần nhất; Nhân viên thấy đơn "Chờ xác nhận" lên đầu ──
+  const orderPriority = (o) => (o.status === "Chờ xác nhận" ? 1 : 0);
   const recentOrders = [...orders]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .sort((a, b) =>
+      (admin ? 0 : orderPriority(b) - orderPriority(a)) ||
+      new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 5);
 
-  // ── Sản phẩm sắp hết hàng / bán chạy (đánh dấu thủ công) ──
-  const lowStock = activeProducts
-    .filter(p => p.stock > 0 && p.stock <= 3)
-    .sort((a, b) => a.stock - b.stock)
-    .slice(0, 5);
-  const bestSellers = activeProducts.filter(p => p.isBestSeller).slice(0, 5);
 
   // ── Liên hệ mới nhất (3) ──
   const recentContacts = [...contacts]
@@ -345,13 +389,17 @@ const Dashboard = () => {
   // đăng lâu) — khác hẳn "bán chậm nhất" ở trên (worstSelling chỉ xét sản phẩm ĐÃ có bán).
   // Đây là danh sách để Admin cân nhắc: cần quảng bá thêm, giảm giá, hay ngừng nhập nữa. ──
   const neverSoldProducts = activeProducts.filter(p => !soldQtyByProduct[p.id]);
+  const isNewProduct = (p) => p.createdAt && (now - new Date(p.createdAt)) < NEW_PRODUCT_DAYS * 86400000;
 
   // Tra nhanh ngày bất thường theo khoá yyyy-MM-dd để đánh dấu cột trên biểu đồ
   const anomalyByDate = Object.fromEntries(anomalies.map(a => [a.date, a]));
 
   return (
     <div className="dashboard">
+      <div className="dashboard-layout">
 
+        {/* ── Cột trái: số liệu, biểu đồ, phân tích, đơn hàng ── */}
+        <div className="dashboard-main">
       {admin && (<>
       {/* ── Nhận xét nhanh bằng AI — đặt TRÊN CÙNG, trước cả số liệu, để Admin đọc nhận
           định tổng quan trước khi nhìn vào từng con số. Thiết kế dạng banner GỌN: nền nhạt
@@ -371,6 +419,9 @@ const Dashboard = () => {
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 700, color: "#4338ca", textTransform: "uppercase", letterSpacing: .4 }}>
             Nhận xét nhanh (AI)
+            <span style={{ fontWeight: 500, textTransform: "none", letterSpacing: 0, color: "#6366f1", marginLeft: 6 }}>
+              · dựa trên số liệu tháng này và {chartRange} ngày gần nhất
+            </span>
           </p>
           {insightLoading ? (
             <p style={{ margin: 0, fontSize: 13.5, color: "#6366f1" }}>Đang phân tích số liệu...</p>
@@ -403,52 +454,40 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* ── Gợi ý hành động bằng AI — Admin nên làm gì ngay, kèm mức ưu tiên.
-          Rỗng thì vẫn hiện thông báo thay vì ẩn card, để Admin biết tính năng tồn tại. */}
-      <div className="dashboard-card">
-        <div className="dashboard-card__header"><h2>💡 Gợi ý hành động (AI)</h2></div>
-        {recLoading ? (
-          <p className="empty-note">Đang phân tích số liệu...</p>
-        ) : recError ? (
-          <p className="empty-note" style={{ color: "#dc2626" }}>{recError}</p>
-        ) : recommendations.length === 0 ? (
-          <p className="empty-note">Hiện chưa có gợi ý hành động nào.</p>
-        ) : (
-          recommendations.map((r, i) => (
-            <div className="rec-item" key={i}>
-              <span className={`badge ${REC_BADGE[r.priority] || "badge--info"}`}>{r.priority}</span>
-              <div className="rec-item__body">
-                <strong>{r.title}</strong>
-                {r.detail && <p>{r.detail}</p>}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
       </>)}
 
       {/* Stats */}
       <div className="stats-grid">
-        {visibleStats.map((s, i) => (
-          <div className="stat-card" key={i}>
-            <div className="stat-card__icon" style={{ background: s.color + "18", color: s.color }}>{s.icon}</div>
-            <div className="stat-card__info">
-              <p className="stat-card__label">{s.label}</p>
-              <h3 className="stat-card__value">{s.value}</h3>
-              <span className={`stat-card__change ${s.up ? "up" : "down"}`}>
-                {s.up ? "↑" : "↓"} {s.change}
-              </span>
-            </div>
-          </div>
-        ))}
+        {visibleStats.map((s, i) => {
+          const body = (
+            <>
+              <div className="stat-card__icon" style={{ background: s.color + "18", color: s.color }}>{s.icon}</div>
+              <div className="stat-card__info">
+                <p className="stat-card__label">{s.label}</p>
+                <h3 className="stat-card__value">{s.value}</h3>
+                <span className={`stat-card__change ${s.up ? "up" : "down"}`}>
+                  {s.up ? "↑" : "↓"} {s.change}
+                </span>
+              </div>
+            </>
+          );
+          // Thẻ có "to" bấm được để chuyển sang trang quản lý tương ứng
+          return s.to
+            ? <Link to={s.to} className="stat-card stat-card--link" key={i}>{body}</Link>
+            : <div className="stat-card" key={i}>{body}</div>;
+        })}
       </div>
 
       {admin && (<>
       {/* Revenue chart */}
       <div className="dashboard-card">
         <div className="dashboard-card__header">
-          <h2>Doanh thu {chartRange} ngày gần nhất</h2>
+          <div>
+            <h2>Doanh thu {chartRange} ngày gần nhất</h2>
+            <p className="chart-note chart-note--sub">
+              Tổng: <strong>{formatPrice(rangeTotal)}</strong> · tính theo ngày đặt hàng, không gồm đơn đã huỷ
+            </p>
+          </div>
           <div className="chart-range-toggle">
             {[7, 14, 30].map(n => (
               <button
@@ -523,11 +562,29 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* ── Doanh thu theo danh mục + Bán chạy/bán chậm ── */}
-      <div className="quick-grid">
-        <div className="dashboard-card">
-          <div className="dashboard-card__header"><h2>Doanh thu theo danh mục</h2></div>
-          {categoryStats.length === 0 ? (
+      {/* ── Phân tích sản phẩm: gộp doanh thu theo danh mục, bán chạy/chậm, chưa bán được vào 1 khung có tab ── */}
+      <div className="dashboard-card">
+        <div className="dashboard-card__header">
+          <h2>Phân tích sản phẩm</h2>
+          <div className="chart-range-toggle">
+            {[
+              ["category", "Theo danh mục"],
+              ["ranking", "Bán chạy / bán chậm"],
+              ["never", `Chưa bán được (${neverSoldProducts.length})`],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                className={`chart-range-btn ${analysisTab === key ? "chart-range-btn--active" : ""}`}
+                onClick={() => setAnalysisTab(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {analysisTab === "category" && (
+          categoryStats.length === 0 ? (
             <p className="empty-note">Chưa có dữ liệu doanh thu (chỉ tính đơn Hoàn thành).</p>
           ) : (
             <div className="category-revenue-list">
@@ -543,26 +600,22 @@ const Dashboard = () => {
                       <strong>{formatPrice(c.revenue)}</strong>
                     </div>
                     <div className="category-revenue-bar-track">
-                      <div
-                        className="category-revenue-bar-fill"
-                        style={{ width: `${pct}%`, background: c.color }}
-                      />
+                      <div className="category-revenue-bar-fill" style={{ width: `${pct}%`, background: c.color }} />
                     </div>
                   </div>
                 );
               })}
             </div>
-          )}
-        </div>
+          )
+        )}
 
-        <div className="dashboard-card">
-          <div className="dashboard-card__header"><h2>Bán chạy / bán chậm (theo số lượng)</h2></div>
-          {productSalesRanking.length === 0 ? (
+        {analysisTab === "ranking" && (
+          productSalesRanking.length === 0 ? (
             <p className="empty-note">Chưa có sản phẩm nào được bán (đơn Hoàn thành).</p>
           ) : (
             <div className="ranking-columns">
               <div className="ranking-col">
-                <p className="ranking-col__title">🔥 Bán chạy nhất</p>
+                <p className="ranking-col__title">🔥 Bán chạy nhất (theo số lượng)</p>
                 {topSelling.map((p, i) => (
                   <div className="ranking-item" key={p.id}>
                     <span className="ranking-item__rank">{i + 1}</span>
@@ -572,7 +625,7 @@ const Dashboard = () => {
                 ))}
               </div>
               <div className="ranking-col">
-                <p className="ranking-col__title">🐌 Bán chậm nhất</p>
+                <p className="ranking-col__title">🐌 Bán chậm nhất (đã có ít nhất 1 lượt bán)</p>
                 {worstSelling.map((p, i) => (
                   <div className="ranking-item" key={p.id}>
                     <span className="ranking-item__rank">{i + 1}</span>
@@ -582,8 +635,29 @@ const Dashboard = () => {
                 ))}
               </div>
             </div>
-          )}
-        </div>
+          )
+        )}
+
+        {analysisTab === "never" && (
+          neverSoldProducts.length === 0 ? (
+            <p className="empty-note">🎉 Mọi sản phẩm đang bán đều đã có ít nhất 1 lượt bán.</p>
+          ) : (
+            <>
+              {neverSoldProducts.slice(0, 5).map((p) => (
+                <div className="quick-item" key={p.id}>
+                  <span>📦 {p.name} — {p.category || "Chưa phân loại"}</span>
+                  {/* Sản phẩm mới đăng chưa nên coi là ế */}
+                  <span className="badge badge--muted">{isNewProduct(p) ? "Mới đăng" : "Chưa bán được"}</span>
+                </div>
+              ))}
+              {neverSoldProducts.length > 5 && (
+                <p className="empty-note" style={{ marginTop: 8 }}>
+                  ...và {neverSoldProducts.length - 5} sản phẩm khác
+                </p>
+              )}
+            </>
+          )
+        )}
       </div>
 
       </>)}
@@ -591,7 +665,7 @@ const Dashboard = () => {
       {/* Recent Orders */}
       <div className="dashboard-card">
         <div className="dashboard-card__header">
-          <h2>Đơn hàng gần đây</h2>
+          <h2>{admin ? "Đơn hàng gần đây" : "Đơn hàng cần xử lý (đơn chờ xác nhận xếp trước)"}</h2>
           <Link to="/orders" className="view-all">Xem tất cả →</Link>
         </div>
         {recentOrders.length === 0 ? (
@@ -604,6 +678,7 @@ const Dashboard = () => {
                   <th>Mã đơn</th>
                   <th>Khách hàng</th>
                   <th>Tổng tiền</th>
+                  <th>Thời gian đặt</th>
                   <th>Trạng thái</th>
                 </tr>
               </thead>
@@ -613,6 +688,7 @@ const Dashboard = () => {
                     <td><strong>#{o.id}</strong></td>
                     <td>{o.customerName}</td>
                     <td><strong>{formatPrice(o.total)}</strong></td>
+                    <td>{formatDateTime(o.createdAt)}</td>
                     <td><span className={`badge ${STATUS_BADGE[o.status] || "badge--info"}`}>{o.status}</span></td>
                   </tr>
                 ))}
@@ -622,72 +698,104 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Quick Info */}
-      <div className="quick-grid">
-        <div className="dashboard-card">
-          <div className="dashboard-card__header"><h2>Sản phẩm sắp hết hàng</h2></div>
-          {lowStock.length === 0 ? (
-            <p className="empty-note">Không có sản phẩm nào sắp hết hàng.</p>
-          ) : lowStock.map((p) => (
-            <div className="quick-item" key={p.id}>
-              <span>🪑 {p.name} (còn {p.stock})</span>
-              <span className="badge badge--warning">Sắp hết</span>
-            </div>
-          ))}
         </div>
+
+        {/* ── Cột phải: việc cần làm, gợi ý AI, tồn kho, liên hệ ── */}
+        <aside className="dashboard-side">
+      {/* ── Việc cần làm (cả Admin và Nhân viên): mỗi dòng dẫn tới trang xử lý tương ứng ── */}
+      {(
         <div className="dashboard-card">
-          <div className="dashboard-card__header"><h2>Liên hệ chưa xử lý</h2></div>
-          {recentContacts.length === 0 ? (
-            <p className="empty-note">Không có liên hệ mới nào.</p>
-          ) : recentContacts.map((c) => (
-            <div className="quick-item" key={c.id}>
-              <span>✉️ {c.name} — {c.message?.length > 32 ? c.message.slice(0, 32) + "..." : c.message}</span>
-              <span className="badge badge--danger">Mới</span>
-            </div>
-          ))}
+          <div className="dashboard-card__header"><h2>📋 Việc cần làm</h2></div>
+          {staffTasks.every(task => task.count === 0) ? (
+            <p className="empty-note">🎉 Hiện không có việc nào cần xử lý.</p>
+          ) : (
+            staffTasks.map((task) => (
+              <div className="task-item" key={task.label}>
+                <span className={`badge ${task.count > 0 ? "badge--warning" : "badge--muted"}`}>{task.count}</span>
+                <span className="task-item__label">{task.label}</span>
+                {task.count > 0 && <Link to={task.to} className="task-item__action">{task.action} →</Link>}
+              </div>
+            ))
+          )}
         </div>
-      </div>
+      )}
 
       {admin && (<>
-      {/* Best sellers (đánh dấu thủ công) */}
+      {/* ── Gợi ý hành động bằng AI — Admin nên làm gì ngay, kèm mức ưu tiên.
+          Rỗng thì vẫn hiện thông báo thay vì ẩn card, để Admin biết tính năng tồn tại. */}
       <div className="dashboard-card">
-        <div className="dashboard-card__header"><h2>Sản phẩm bán chạy (đánh dấu thủ công)</h2></div>
-        {bestSellers.length === 0 ? (
-          <p className="empty-note">Chưa có sản phẩm nào được đánh dấu bán chạy.</p>
-        ) : bestSellers.map((p) => (
-          <div className="quick-item" key={p.id}>
-            <span>⭐ {p.name}</span>
-            <strong>{formatPrice(p.price)}</strong>
-          </div>
-        ))}
-      </div>
-
-      {/* Sản phẩm chưa từng bán được — khác "bán chậm nhất" (đó chỉ xét SP đã có ít nhất 1 lượt bán) */}
-      <div className="dashboard-card">
-        <div className="dashboard-card__header">
-          <h2>Sản phẩm chưa từng bán được ({neverSoldProducts.length})</h2>
-        </div>
-        {neverSoldProducts.length === 0 ? (
-          <p className="empty-note">🎉 Mọi sản phẩm đang bán đều đã có ít nhất 1 lượt bán.</p>
+        <div className="dashboard-card__header"><h2>💡 Gợi ý hành động (AI)</h2></div>
+        {recLoading ? (
+          <p className="empty-note">Đang phân tích số liệu...</p>
+        ) : recError ? (
+          <p className="empty-note" style={{ color: "#dc2626" }}>{recError}</p>
+        ) : recommendations.length === 0 ? (
+          <p className="empty-note">Hiện chưa có gợi ý hành động nào.</p>
         ) : (
-          <>
-            {neverSoldProducts.slice(0, 8).map((p) => (
-              <div className="quick-item" key={p.id}>
-                <span>📦 {p.name} — {p.category || "Chưa phân loại"}</span>
-                <span className="badge badge--muted">Chưa bán được</span>
+          <>{(recExpanded ? recommendations : recommendations.slice(0, 3)).map((r, i) => {
+            const act = recAction(r);
+            return (
+              <div className="rec-item" key={i}>
+                <span className={`badge ${REC_BADGE[r.priority] || "badge--info"}`}>{r.priority}</span>
+                <div className="rec-item__body">
+                  <strong>{r.title}</strong>
+                  {r.detail && <p>{r.detail}</p>}
+                </div>
+                {act && <Link to={act.to} className="rec-item__action">{act.label} →</Link>}
               </div>
-            ))}
-            {neverSoldProducts.length > 8 && (
-              <p className="empty-note" style={{ marginTop: 8 }}>
-                ...và {neverSoldProducts.length - 8} sản phẩm khác
-              </p>
-            )}
+            );
+          })}
+          {recommendations.length > 3 && (
+            <button className="rec-toggle" onClick={() => setRecExpanded((v) => !v)}>
+              {recExpanded ? "Thu gọn ▲" : `Xem thêm ${recommendations.length - 3} gợi ý ▼`}
+            </button>
+          )}
           </>
         )}
       </div>
 
       </>)}
 
+        <div className="dashboard-card">
+          <div className="dashboard-card__header">
+            <h2>Sản phẩm sắp hết / hết hàng ({lowStockAll.length})</h2>
+            <Link to="/products" className="view-all">Xem sản phẩm →</Link>
+          </div>
+          {lowStock.length === 0 ? (
+            <p className="empty-note">Không có sản phẩm nào sắp hết hàng.</p>
+          ) : lowStock.map((p) => (
+            <div className="quick-item" key={p.id}>
+              <span>🪑 {p.name} — {p.stock === 0 ? "hết hàng" : `còn ${p.stock}`}</span>
+              <span className={`badge ${p.stock === 0 ? "badge--danger" : "badge--warning"}`}>
+                {p.stock === 0 ? "Hết hàng" : "Sắp hết"}
+              </span>
+            </div>
+          ))}
+          {lowStockAll.length > lowStock.length && (
+            <p className="empty-note">...và {lowStockAll.length - lowStock.length} sản phẩm khác</p>
+          )}
+        </div>
+        <div className="dashboard-card">
+          <div className="dashboard-card__header">
+            <h2>Liên hệ chưa xử lý ({newContacts.length})</h2>
+            <Link to="/contacts" className="view-all">Xem tất cả →</Link>
+          </div>
+          {recentContacts.length === 0 ? (
+            <p className="empty-note">Không có liên hệ mới nào.</p>
+          ) : recentContacts.map((c) => {
+            const msg = (c.message || "").trim();
+            return (
+              <div className="quick-item" key={c.id}>
+                <span>
+                  ✉️ <strong>{c.name || "Khách"}</strong> — {msg ? (msg.length > 32 ? msg.slice(0, 32) + "..." : msg) : "(không có nội dung)"}
+                </span>
+                <span className="quick-item__meta">{formatDateTime(c.createdAt)}</span>
+              </div>
+            );
+          })}
+        </div>
+        </aside>
+      </div>
     </div>
   );
 };
